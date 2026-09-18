@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><style>
+:root{--acc:#2f6fd0;--ink:#1c1c1c;--mid:#6b6b6b;--line:#b9b9b9;--red:#8a2f2f}
+body{margin:0;background:#eceae6;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);text-wrap:pretty}
+a{color:var(--acc)}a:hover{color:#1d4f9c}
+.doc{max-width:1560px;margin:0 auto;padding:40px 36px 80px;display:flex;flex-direction:column;gap:52px}
+.scr{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:24px;align-items:start}
+@media(max-width:1180px){.scr{grid-template-columns:minmax(0,1fr)}}
+.shd{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.snum{font:700 12px/1 ui-monospace,Menlo,monospace;background:var(--ink);color:#fff;padding:4px 7px;border-radius:4px}
+.stitle{font:600 15px/1.2 system-ui}
+.svar{font:400 12px/1.2 system-ui;color:var(--mid)}
+.frame{background:#fff;border:1px solid #9a9a9a;border-radius:3px;padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.ann{border:1px dashed #9a9a9a;background:#f6f5f3;border-radius:3px;padding:14px;font:12px/1.5 system-ui;color:#3a3a3a;display:flex;flex-direction:column;gap:9px}
+.ann b{display:block;font:700 9.5px/1 system-ui;letter-spacing:.09em;text-transform:uppercase;color:#7a7a7a;margin-bottom:3px}
+.ann p{margin:0}
+.lbl{font:600 11px/1.3 system-ui;color:#4a4a4a;display:block;margin-bottom:4px}
+.lbl i{font-style:normal;color:var(--red)}
+.inp{border:1px solid #b0b0b0;background:#fff;border-radius:3px;padding:8px 10px;font:13px/1.3 system-ui;color:#9a9a9a;min-height:34px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.inp.fl{color:var(--ink)}
+.inp.er{border-color:var(--red);background:#fdf7f7}
+.inp.fo{border-color:var(--acc);box-shadow:0 0 0 3px rgba(47,111,208,.28)}
+.inp.di{background:#f0f0f0;color:#b4b4b4;border-style:dashed}
+.inp.ta{align-items:flex-start;min-height:74px}
+.hint{font:11px/1.4 system-ui;color:#8c8c8c;margin-top:4px}
+.ferr{font:11px/1.4 system-ui;color:var(--red);margin-top:4px}
+.btn{border:1px solid #6e6e6e;background:#fff;border-radius:3px;padding:8px 14px;font:600 12px/1.2 system-ui;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.d{color:var(--red);border-color:#c09292}
+.btn.off{opacity:.4}
+.btn.sm{padding:5px 9px;font-size:11px}
+.chip{border:1px solid #b0b0b0;border-radius:999px;padding:3px 9px;font:11px/1.4 system-ui;background:#fff;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.stat{border:1px solid #6e6e6e;border-radius:3px;padding:2px 7px;font:700 9.5px/1.5 system-ui;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.stat.g{background:var(--ink);color:#fff}
+.stat.w{border-color:#8a6a2f;color:#8a6a2f;background:#fbf7ef}
+.skel{background:#e4e4e4;border-radius:3px;height:12px}
+.imgx{background:#e8e8e8;border:1px solid var(--line);background-image:linear-gradient(to top right,transparent 49.3%,var(--line) 49.6%,var(--line) 50.4%,transparent 50.7%),linear-gradient(to bottom right,transparent 49.3%,var(--line) 49.6%,var(--line) 50.4%,transparent 50.7%)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.sec{border:1px dashed var(--line);border-radius:3px;padding:12px}
+.sech{font:700 10.5px/1 system-ui;letter-spacing:.09em;text-transform:uppercase;color:var(--mid);margin-bottom:11px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.banner{border:1px solid var(--red);background:#fbf2f2;padding:10px 12px;border-radius:3px;font:12px/1.5 system-ui;color:#7a2626}
+.note{border:1px dashed var(--line);background:#f6f5f3;padding:10px 12px;border-radius:3px;font:12px/1.5 system-ui;color:#4a4a4a}
+.card{border:1px dashed var(--line);border-radius:3px;padding:12px;background:#fff}
+.tbar{border:1px dashed var(--line);border-radius:3px;padding:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fafafa}
+.appbar{border:1px solid var(--line);background:#f4f3f1;padding:10px 12px;display:flex;align-items:center;gap:12px;border-radius:3px}
+.seg{display:flex;border:1px solid #b0b0b0;border-radius:3px;overflow:hidden}
+.seg span{padding:7px 12px;font:600 11.5px/1.2 system-ui;border-right:1px solid #d2d2d2;color:#5a5a5a}
+.seg span:last-child{border-right:0}
+.seg span.on{background:var(--acc);color:#fff}
+.mut{color:var(--mid);font:11.5px/1.5 system-ui}
+.ttl{font:600 13.5px/1.3 system-ui}
+.big{font:600 20px/1.25 system-ui}
+.cap{font:700 9.5px/1 system-ui;letter-spacing:.09em;text-transform:uppercase;color:#8c8c8c}
+.phone{width:390px;border:2px solid #6e6e6e;border-radius:18px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+table{border-collapse:collapse;width:100%}
+th{font:700 9.5px/1 system-ui;letter-spacing:.08em;text-transform:uppercase;color:#8c8c8c;text-align:left;padding:8px 8px;border-bottom:1px solid var(--line)}
+td{font:12px/1.4 system-ui;padding:10px 8px;border-bottom:1px dashed #dcdcdc;vertical-align:middle}
+</style></helmet>
+<div class="doc">
+
+<div style="border:1px solid #9a9a9a;background:#fff;border-radius:3px;padding:24px">
+<div class="row" style="justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1c1c1c;padding-bottom:10px;margin-bottom:14px">
+<div><div class="cap">Low-fidelity annotated wireframes</div><div style="font:700 22px/1.2 system-ui;margin-top:6px">Two-app job board — Post &amp; Search</div></div>
+<div class="mut">Greyscale + one accent · 8px scale · v1</div>
+</div>
+<div class="sech">Design decisions</div>
+<ul style="margin:0;padding-left:18px;font:12.5px/1.75 system-ui;color:#333;columns:2;column-gap:36px">
+<li><b>Create Job is one page, not a wizard.</b> Hiring managers post repeatedly and already know the shape of a posting; a single scannable page lets them tab straight through, paste from a doc, and see every required field at once. Wizards suit unfamiliar, branching flows — this is neither.</li>
+<li><b>Salary errors anchor to the field pair.</b> Min ≥ Max is a relationship, not a property of either input. The message sits under both fields with both outlined, so the manager isn't told "Min is invalid" when Max is the one they meant to change.</li>
+<li><b>Validation fires on blur, re-validates on input once errored.</b> No shouting at a field the user hasn't finished typing into; instant relief once they fix it.</li>
+<li><b>Eventual consistency is framed as propagation, not delay.</b> The confirmation screen says the posting is saved (with its server ID) and the board copy "may take a few moments" — a neutral note, not a warning colour, because nothing is wrong.</li>
+<li><b>Confirmation echoes the API record verbatim.</b> ID, slug, created timestamp and status come back from the server, so the manager can quote a reference in email and we prove what was actually stored.</li>
+<li><b>Server errors get a summary banner AND inline errors.</b> The banner is the focus target after a failed submit; each line links to its input. Screen-reader users hear the count first, sighted users see the map.</li>
+<li><b>App 2 is filter-rail-first, App 1 is toolbar-first.</b> Candidates narrow a large unknown set; managers scan a small known one. Same type, spacing and components — different information density on purpose.</li>
+<li><b>Filters show as removable chips above the results.</b> The rail can scroll out of view; the chips keep the active query visible and one click from undoable, and they're the aria-live region for result counts.</li>
+<li><b>Skeletons, not spinners, in App 2.</b> The results layout is predictable, so a skeleton preserves scroll position and perceived speed. App 1's submit uses a spinner because one action is blocking.</li>
+<li><b>Remote disables rather than hides Location.</b> Managers still often want a region for timezone; the field relabels to "Region (optional)" instead of vanishing, avoiding a layout jump.</li>
+</ul>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">1.1</span><span class="stitle">Manager Sign Up</span><span class="svar">App 1 · Post · unauthenticated</span></div>
+<div class="frame" style="max-width:760px">
+<div class="appbar"><div class="imgx" style="width:26px;height:26px"></div><b style="font:700 13px system-ui">Post</b><span class="mut" style="margin-left:auto">Already have an account? <a href="#l">Log in</a></span></div>
+<div style="max-width:420px;margin:8px auto;display:flex;flex-direction:column;gap:12px">
+<div class="big">Create your hiring account</div>
+<div><span class="lbl">Work email <i>*</i></span><div class="inp fl">dana.whitfield@northline.co</div><div class="hint">Personal domains (gmail, outlook) are rejected server-side.</div></div>
+<div><span class="lbl">Full name <i>*</i></span><div class="inp fl">Dana Whitfield</div></div>
+<div><span class="lbl">Company / organization <i>*</i></span><div class="inp er">Nor</div><div class="ferr">Company name must be at least 2 characters.</div></div>
+<div><span class="lbl">Password <i>*</i></span><div class="inp fo">••••••••••••<span class="mut">Show</span></div>
+<div class="row" style="gap:4px;margin-top:6px"><div style="height:4px;flex:1;background:var(--acc)"></div><div style="height:4px;flex:1;background:var(--acc)"></div><div style="height:4px;flex:1;background:var(--acc)"></div><div style="height:4px;flex:1;background:#e0e0e0"></div></div>
+<div class="hint">Strength: Strong · 12+ characters, mix of cases and a number</div></div>
+<div><span class="lbl">Confirm password <i>*</i></span><div class="inp">••••••••••••</div></div>
+<div class="row" style="align-items:flex-start;gap:8px"><div style="width:16px;height:16px;border:1px solid #6e6e6e;border-radius:2px;flex:none;margin-top:1px"></div><span class="mut">I agree to the <a href="#t">Terms of Service</a> and <a href="#p">Privacy Policy</a>. <i style="color:var(--red);font-style:normal">*</i></span></div>
+<div class="btn p" style="justify-content:center">Create account</div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Let a hiring manager self-serve an account in under a minute, with enough validation that the first posting isn't blocked by a bad domain.</p></div>
+<div><b>Data</b><p>All fields client-collected. Server returns: account id, verification status, and field-level errors (email taken, disposable domain). Password strength is client-derived only, never sent as a score.</p></div>
+<div><b>Interactions</b><p>Validation on blur per field; once a field is errored it re-validates on every keystroke. Strength meter updates on input. Submit disabled until required fields are non-empty and terms are checked; all other rules are reported, not preventive. Show/hide toggles password type without losing caret.</p></div>
+<div><b>States</b><p>Idle · inline error (shown) · submitting (button spinner, fields readonly) · server error banner above the heading · success → redirect to 1.3 with a "verify your email" toast.</p></div>
+<div><b>A11y</b><p>h1 "Create your hiring account", no skipped levels. Every input has a real <code>&lt;label for&gt;</code>; errors referenced by <code>aria-describedby</code> and <code>aria-invalid</code>. Strength meter is <code>role="status"</code> + <code>aria-live="polite"</code>, announced debounced at 500ms. On failed submit, focus moves to the first errored input.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">1.2</span><span class="stitle">Log In</span><span class="svar">default · invalid credentials · rate limited</span></div>
+<div class="frame">
+<div class="g3">
+<div class="col">
+<div class="cap">A — Default</div>
+<div class="card col" style="gap:12px">
+<div class="ttl">Log in to Post</div>
+<div><span class="lbl">Email</span><div class="inp">you@company.com</div></div>
+<div><span class="lbl">Password</span><div class="inp">••••••••<span class="mut">Show</span></div></div>
+<div class="row" style="justify-content:space-between"><span class="mut"><span style="display:inline-block;width:13px;height:13px;border:1px solid #6e6e6e;vertical-align:-2px;margin-right:5px"></span>Remember me</span><a href="#f" style="font-size:11.5px">Forgot password?</a></div>
+<div class="btn p">Log in</div>
+<div class="mut" style="text-align:center">No account? <a href="#s">Sign up</a></div>
+</div>
+</div>
+<div class="col">
+<div class="cap">B — Invalid credentials</div>
+<div class="card col" style="gap:12px">
+<div class="banner">We couldn't match that email and password. <b>2 attempts remaining</b> before a temporary lock.</div>
+<div class="ttl">Log in to Post</div>
+<div><span class="lbl">Email</span><div class="inp fl fo">dana.whitfield@northline.co</div></div>
+<div><span class="lbl">Password</span><div class="inp er">••••••••<span class="mut">Show</span></div></div>
+<div class="btn p">Log in</div>
+</div>
+</div>
+<div class="col">
+<div class="cap">C — Rate limited</div>
+<div class="card col" style="gap:12px">
+<div class="banner">Too many attempts. Try again in <b>4:52</b>, or reset your password.</div>
+<div class="ttl">Log in to Post</div>
+<div><span class="lbl">Email</span><div class="inp di">dana.whitfield@northline.co</div></div>
+<div><span class="lbl">Password</span><div class="inp di">••••••••</div></div>
+<div class="row"><div class="btn p off" style="flex:1">Log in</div><div class="btn">Reset password</div></div>
+</div>
+</div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Return an existing manager to their dashboard, and fail safely without telling an attacker which half was wrong.</p></div>
+<div><b>Data</b><p>Server returns session token + manager profile; 401 with a generic message, 429 with <code>retry_after</code> seconds (client renders the countdown).</p></div>
+<div><b>Interactions</b><p>No inline validation beyond "required" — credential checking is server-side only. "Remember me" extends refresh-token life, stated in a tooltip. Countdown in C ticks client-side and re-enables the form at zero.</p></div>
+<div><b>States</b><p>Default · submitting · 401 banner (attempts remaining) · 429 lockout with disabled inputs · success → 1.3.</p></div>
+<div><b>A11y</b><p>Banner is <code>role="alert"</code> and receives focus after a failed submit, before the fields. The countdown is <code>aria-live="off"</code> with a polite update every 30s so it doesn't chatter. Disabled inputs use <code>aria-disabled</code> + readonly so they stay reachable by keyboard and screen reader.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">1.3</span><span class="stitle">Manager Dashboard</span><span class="svar">populated</span></div>
+<div class="frame">
+<div class="appbar"><div class="imgx" style="width:24px;height:24px"></div><b style="font:700 13px system-ui">Post</b><span class="mut">Postings</span><span class="mut">Company</span><div style="margin-left:auto" class="row"><span class="mut">Northline Logistics</span><div class="imgx" style="width:26px;height:26px;border-radius:50%"></div></div></div>
+<div class="row" style="justify-content:space-between"><div><div class="big">Your postings</div><div class="mut">6 postings · 2 published</div></div><div class="btn p">+ Post a job</div></div>
+<div class="tbar"><div class="inp" style="flex:1;min-width:180px">Search title, department, ref…</div><div class="inp" style="width:150px">Status: All ▾</div><div class="inp" style="width:170px">Sort: Recently created ▾</div></div>
+<table>
+<tr><th>Title</th><th>Department</th><th>Location</th><th>Status</th><th>Applicants</th><th>Closes</th><th>Created</th><th></th></tr>
+<tr><td><b>Senior Warehouse Supervisor</b><div class="mut">REF-4471</div></td><td>Operations</td><td>Leeds · Hybrid</td><td><span class="stat g">Published</span></td><td>24</td><td><span class="stat w">Closes in 5 days</span><div class="mut">23 Sep 2026</div></td><td>02 Sep 2026</td><td><span class="btn sm">Edit</span></td></tr>
+<tr><td><b>Fleet Maintenance Technician</b><div class="mut">REF-4468</div></td><td>Operations</td><td>Rotherham · On-site</td><td><span class="stat g">Published</span></td><td>9</td><td>14 Oct 2026</td><td>28 Aug 2026</td><td><span class="btn sm">Edit</span></td></tr>
+<tr><td><b>Logistics Data Analyst</b><div class="mut">REF-4462</div></td><td>Data &amp; Insight</td><td>Remote (UK)</td><td><span class="stat">Draft</span></td><td>—</td><td>—</td><td>26 Aug 2026</td><td><span class="btn sm">Edit</span></td></tr>
+<tr><td><b>HR Business Partner</b><div class="mut">REF-4450</div></td><td>People</td><td>Leeds · Hybrid</td><td><span class="stat">Closed</span></td><td>61</td><td>11 Aug 2026</td><td>02 Jul 2026</td><td><span class="btn sm">View</span></td></tr>
+<tr><td><b>Night Shift Loader</b><div class="mut">REF-4441</div></td><td>Operations</td><td>Doncaster · On-site</td><td><span class="stat">Expired</span></td><td>17</td><td>30 Jul 2026</td><td>19 Jun 2026</td><td><span class="btn sm">Duplicate</span></td></tr>
+</table>
+<div class="row" style="justify-content:flex-end"><span class="btn sm off">←</span><span class="btn sm">1</span><span class="btn sm">2</span><span class="btn sm">→</span></div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>One place for a manager to see the health of every posting they own and get to "Post a job" without hunting.</p></div>
+<div><b>Data</b><p>API: id, title, department, location, arrangement, status, created_at, closes_at, applicant_count, reference. Client-derived: the "closes in N days" warning (computed from <code>closes_at</code>, threshold 7 days), relative created date, and the counts in the subhead.</p></div>
+<div><b>Interactions</b><p>Search debounced 300ms, filters and sort are URL query params so a view is shareable and survives refresh. Row click opens 1.6 Edit; explicit Edit/Duplicate buttons for keyboard and touch. Status filter is single-select; sort persists per user.</p></div>
+<div><b>States</b><p>Loading = 5 skeleton rows keeping column widths. Empty (new manager) and filtered-empty are different screens — see the variants below. Error = inline retry panel replacing the table only, toolbar stays usable.</p></div>
+<div><b>A11y</b><p>Real <code>&lt;table&gt;</code> with <code>&lt;th scope="col"&gt;</code>; sort control is a button with <code>aria-sort</code> on the active column. Status chip text is the accessible name — colour is never the only signal. Result count announced via <code>aria-live="polite"</code> after filtering.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">1.3b</span><span class="stitle">Dashboard — empty, loading, filtered-empty</span></div>
+<div class="frame">
+<div class="g3">
+<div class="col"><div class="cap">A — New manager, zero postings</div>
+<div class="card col" style="align-items:center;text-align:center;gap:12px;padding:28px 16px">
+<div class="imgx" style="width:64px;height:48px"></div>
+<div class="ttl">No postings yet</div>
+<div class="mut" style="max-width:240px">Create your first job posting — it takes about three minutes, and you can save it as a draft at any point.</div>
+<div class="btn p">+ Post a job</div>
+<a href="#g" style="font-size:11.5px">How postings appear on the job board</a>
+</div></div>
+<div class="col"><div class="cap">B — Loading</div>
+<div class="card col" style="gap:14px">
+<div class="row"><div class="skel" style="width:120px;height:14px"></div><div class="skel" style="width:70px;height:14px;margin-left:auto"></div></div>
+<div class="skel" style="height:1px"></div>
+<div class="col" style="gap:14px">
+<div class="row" style="gap:10px"><div class="skel" style="flex:2"></div><div class="skel" style="flex:1"></div><div class="skel" style="width:54px"></div></div>
+<div class="row" style="gap:10px"><div class="skel" style="flex:2"></div><div class="skel" style="flex:1"></div><div class="skel" style="width:54px"></div></div>
+<div class="row" style="gap:10px"><div class="skel" style="flex:2"></div><div class="skel" style="flex:1"></div><div class="skel" style="width:54px"></div></div>
+<div class="row" style="gap:10px"><div class="skel" style="flex:2"></div><div class="skel" style="flex:1"></div><div class="skel" style="width:54px"></div></div>
+</div>
+<div class="mut">aria-busy="true" on the table region</div>
+</div></div>
+<div class="col"><div class="cap">C — No matches for filter</div>
+<div class="card col" style="gap:12px">
+<div class="tbar" style="padding:6px"><div class="inp" style="flex:1;font-size:12px">“analyst”</div><div class="chip on">Status: Closed ✕</div></div>
+<div class="col" style="align-items:center;text-align:center;gap:10px;padding:24px 8px">
+<div class="ttl">No postings match</div>
+<div class="mut">Nothing closed matches “analyst”.</div>
+<div class="btn">Clear filters</div>
+</div>
+</div></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Separate "you have nothing" from "your filter found nothing" — the two need opposite calls to action.</p></div>
+<div><b>Data</b><p>Distinguished client-side by total count vs. filtered count, so we never show onboarding copy to a manager who simply typed a bad query.</p></div>
+<div><b>Interactions</b><p>A's primary CTA opens 1.4. C's "Clear filters" resets the query params and refocuses the search input. Skeleton rows are non-interactive and not tabbable.</p></div>
+<div><b>States</b><p>Skeleton after 200ms only (avoids a flash on fast responses); if the request exceeds 10s, swap to the error panel with Retry.</p></div>
+<div><b>A11y</b><p>Loading region carries <code>aria-busy</code>; on completion, "6 postings loaded" fires in the polite live region. Empty state is a real heading so it appears in the heading outline where the table was.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">1.4</span><span class="stitle">Create Job Posting</span><span class="svar">core screen · single page · sticky footer</span></div>
+<div class="frame">
+<div class="appbar"><div class="imgx" style="width:24px;height:24px"></div><b style="font:700 13px system-ui">Post</b><span class="mut">Postings / New</span><div style="margin-left:auto" class="row"><span class="chip">● Unsaved changes</span><span class="mut">Autosaved draft 14:22</span></div></div>
+<div class="row" style="justify-content:space-between"><div class="big">New job posting</div><div class="mut">Fields marked <i style="color:var(--red);font-style:normal">*</i> are required</div></div>
+
+<div class="sec"><div class="sech">Role</div>
+<div class="col" style="gap:12px">
+<div class="g2">
+<div><span class="lbl">Job title <i>*</i></span><div class="inp fl">Senior Warehouse Supervisor</div><div class="hint">Shown as the result-card headline on the job board.</div></div>
+<div><span class="lbl">Department <i>*</i></span><div class="inp fl">Operations <span class="mut">▾</span></div><div class="hint">Combo-box: pick an existing department or type a new one.</div></div>
+</div>
+<div class="g3">
+<div><span class="lbl">Employment type</span><div class="seg" style="flex-wrap:wrap"><span class="on">Full-time</span><span>Part-time</span><span>Contract</span></div><div class="hint">+ Internship, Temporary (overflow ▾)</div></div>
+<div><span class="lbl">Seniority</span><div class="inp fl">Senior <span class="mut">▾</span></div><div class="hint">Intern · Junior · Mid · Senior · Lead · Executive</div></div>
+<div><span class="lbl">Number of openings</span><div class="inp fl">2</div></div>
+</div>
+</div></div>
+
+<div class="sec"><div class="sech">Location</div>
+<div class="g3">
+<div><span class="lbl">Work arrangement</span><div class="seg"><span>On-site</span><span class="on">Hybrid</span><span>Remote</span></div></div>
+<div><span class="lbl">Location <i>*</i></span><div class="inp fl">Leeds, West Yorkshire</div><div class="hint">Relabels to “Region (optional)” and disables when Remote is selected.</div></div>
+<div><span class="lbl">Country</span><div class="inp fl">United Kingdom <span class="mut">▾</span></div></div>
+</div></div>
+
+<div class="sec"><div class="sech">Compensation</div>
+<div class="col" style="gap:12px">
+<div class="g2" style="max-width:520px">
+<div><span class="lbl">Salary min <i>*</i></span><div class="inp fl er">42,000</div></div>
+<div><span class="lbl">Salary max <i>*</i></span><div class="inp fl er">38,000</div></div>
+</div>
+<div class="ferr" style="max-width:520px;margin-top:0">⚠ Minimum salary must be lower than maximum. Adjust either field.</div>
+<div class="g3" style="max-width:640px">
+<div><span class="lbl">Currency</span><div class="inp fl">GBP (£) <span class="mut">▾</span></div></div>
+<div><span class="lbl">Pay period</span><div class="seg"><span class="on">Annual</span><span>Monthly</span><span>Hourly</span></div></div>
+<div><span class="lbl">Visibility</span><div class="row"><div style="width:34px;height:18px;border:1px solid #6e6e6e;border-radius:999px;position:relative"><div style="position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#6e6e6e"></div></div><span class="mut">Hide salary from candidates</span></div><div class="hint">Off — range will be public.</div></div>
+</div>
+</div></div>
+
+<div class="sec"><div class="sech">Description</div>
+<div class="col" style="gap:12px">
+<div><span class="lbl">Job description <i>*</i></span><div class="inp ta fl" style="min-height:92px">Northline's Leeds distribution hub handles 40,000 outbound units a week. You'll own the evening shift…</div>
+<div class="row" style="justify-content:space-between"><span class="hint">Minimum 200 characters. Basic formatting: bold, italic, lists.</span><span class="hint">312 / 5,000</span></div></div>
+<div class="g2">
+<div><span class="lbl">Responsibilities</span><div class="inp ta">One per line — rendered as a bulleted list on the job board.</div></div>
+<div><span class="lbl">Requirements</span><div class="inp ta">One per line.</div></div>
+</div>
+<div><span class="lbl">Skills / tags</span><div class="inp fl" style="flex-wrap:wrap;justify-content:flex-start;gap:6px;min-height:40px"><span class="chip">Warehouse ops ✕</span><span class="chip">WMS ✕</span><span class="chip">Team leadership ✕</span><span class="mut">Type and press Enter…</span></div><div class="hint">Max 10 tags. Duplicate and empty entries are dropped silently.</div></div>
+</div></div>
+
+<div class="sec"><div class="sech">Timing &amp; contact</div>
+<div class="g3">
+<div><span class="lbl">Closing date <i>*</i></span><div class="inp fl">23 Sep 2026 <span class="mut">▦</span></div>
+<div class="card" style="margin-top:8px;padding:8px;width:210px">
+<div class="row" style="justify-content:space-between;margin-bottom:6px"><span class="btn sm off">←</span><b style="font:700 11px system-ui">September 2026</b><span class="btn sm">→</span></div>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font:10px/1 system-ui;text-align:center;color:#8c8c8c">
+<span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+<span style="color:#d0d0d0;text-decoration:line-through">14</span><span style="color:#d0d0d0;text-decoration:line-through">15</span><span style="color:#d0d0d0;text-decoration:line-through">16</span><span style="color:#d0d0d0;text-decoration:line-through">17</span><span style="padding:4px 0;color:#1c1c1c;border:1px solid var(--acc);border-radius:3px">18</span><span>19</span><span>20</span>
+<span>21</span><span>22</span><span style="background:var(--acc);color:#fff;padding:4px 0;border-radius:3px">23</span><span>24</span><span>25</span><span>26</span><span>27</span>
+</div>
+<div class="hint" style="margin-top:6px">Past dates disabled &amp; skipped by arrow keys.</div>
+</div></div>
+<div><span class="lbl">Application email or URL</span><div class="inp fl">careers@northline.co</div><div class="hint">Either a valid email or an https:// URL.</div></div>
+<div><span class="lbl">Internal reference code</span><div class="inp fl">REF-4471</div><div class="hint">Never shown publicly.</div></div>
+</div></div>
+
+<div class="row" style="position:sticky;bottom:0;justify-content:space-between;border-top:1px solid #9a9a9a;background:#f4f3f1;margin:0 -16px -16px;padding:12px 16px">
+<span class="mut">● Unsaved changes — last autosave 14:22</span>
+<div class="row"><span class="btn">Cancel</span><span class="btn">Save as draft</span><span class="btn p">Publish</span></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Capture a complete, publishable posting in one pass, with grouping that mirrors how managers think: role → where → money → words → dates.</p></div>
+<div><b>Data</b><p>Client-collected: every field above. Server-owned: id, slug, status, created_at, updated_at, and the canonical validation verdict. Server-supplied on load: department suggestions, currency list, company default country. Client-derived: character count, unsaved-changes flag, min/max comparison, past-date disabling.</p></div>
+<div><b>Interactions</b><p>Blur triggers field validation; errored fields re-validate on input. Segmented controls are single-select radio groups (arrow keys move and select). Work arrangement = Remote disables Location and clears its error. Department combo-box accepts free text and commits on Enter or blur. Chip input commits on Enter or comma, Backspace on empty deletes the last chip. Footer is sticky; Publish runs a full client pass first and scrolls to the first error. Cancel with unsaved changes opens a discard dialog.</p></div>
+<div><b>States</b><p>Pristine · dirty (indicator + autosave every 30s) · field error · cross-field error · submitting · server-rejected (see 1.4b) · success → 1.5.</p></div>
+<div><b>A11y</b><p>h1 page title, h2 per section, <code>&lt;fieldset&gt;/&lt;legend&gt;</code> for each group. Salary pair is one fieldset so the shared error is announced for both inputs via <code>aria-describedby</code>. Date picker: trigger is <code>aria-haspopup="dialog"</code>; grid supports arrows/PageUp/PageDown/Home/End, Esc returns focus to the trigger, disabled days are <code>aria-disabled</code> and skipped. Character counter is a polite live region updated at 90% and at the limit only.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">1.4b</span><span class="stitle">Create Job — inline validation, server rejection, submitting</span></div>
+<div class="frame">
+<div class="g3">
+<div class="col"><div class="cap">A — Client-side, on blur</div>
+<div class="card col" style="gap:12px">
+<div><span class="lbl">Job title <i>*</i></span><div class="inp er"></div><div class="ferr">Job title is required.</div></div>
+<div><span class="lbl">Number of openings</span><div class="inp fl er">0</div><div class="ferr">Must be a whole number of 1 or more.</div></div>
+<div><span class="lbl">Application email or URL</span><div class="inp fl er">careers@northline</div><div class="ferr">Enter a valid email address or an https:// link.</div></div>
+<div class="hint">Errors appear only after the field loses focus; they clear the moment the value becomes valid.</div>
+</div></div>
+<div class="col"><div class="cap">B — Server rejected (422)</div>
+<div class="card col" style="gap:12px">
+<div class="banner" style="display:flex;flex-direction:column;gap:6px">
+<b>We couldn't publish this posting — 3 problems</b>
+<span>1. <a href="#e1">Closing date</a> must be at least 24 hours from now.</span>
+<span>2. <a href="#e2">Internal reference code</a> REF-4471 is already used by another posting.</span>
+<span>3. <a href="#e3">Salary max</a> exceeds the band configured for Operations.</span>
+</div>
+<div><span class="lbl">Closing date <i>*</i></span><div class="inp fl er">18 Sep 2026 ▦</div></div>
+<div><span class="lbl">Internal reference code</span><div class="inp fl er">REF-4471</div></div>
+<div class="hint">Banner is rendered above the form, focused on arrival; each line is a link that focuses its input.</div>
+</div></div>
+<div class="col"><div class="cap">C — Submitting</div>
+<div class="card col" style="gap:12px">
+<div><span class="lbl">Job title <i>*</i></span><div class="inp fl di">Senior Warehouse Supervisor</div></div>
+<div><span class="lbl">Department <i>*</i></span><div class="inp fl di">Operations ▾</div></div>
+<div class="row" style="justify-content:flex-end;border-top:1px dashed var(--line);padding-top:12px"><span class="btn off">Cancel</span><span class="btn off">Save as draft</span><span class="btn p off">◐ Publishing…</span></div>
+<div class="hint">All controls disabled; a polite live region announces “Publishing your posting”. Navigation away is blocked until the request settles.</div>
+</div></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Make failure legible: the manager should always know how many things are wrong, which, and how to get to them.</p></div>
+<div><b>Data</b><p>Server returns <code>{ field, code, message }</code> per error; the client maps <code>field</code> to an input id. Unmapped codes fall to a generic line in the banner so nothing is swallowed.</p></div>
+<div><b>Interactions</b><p>Clicking a banner line scrolls to and focuses the input (no page jump — smooth scroll with 80px offset for the sticky header). Fixing a server-flagged field clears its inline error but keeps the banner until resubmit, with fixed lines struck through.</p></div>
+<div><b>States</b><p>Inline (A) is non-blocking; server (B) is blocking; submitting (C) is exclusive — a second Publish is impossible.</p></div>
+<div><b>A11y</b><p>Banner: <code>role="alert"</code>, <code>tabindex="-1"</code>, focused programmatically after the response. Error list is an ordered list so count and position are announced. Submitting button keeps its accessible name and adds <code>aria-busy="true"</code> rather than changing to "Loading".</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">1.5</span><span class="stitle">Confirmation</span><span class="svar">post-submit · echoes the API record</span></div>
+<div class="frame" style="max-width:820px">
+<div class="col" style="gap:14px">
+<div class="row" style="gap:10px"><div class="imgx" style="width:34px;height:34px;border-radius:50%"></div><div><div class="big">Posting published</div><div class="mut">Senior Warehouse Supervisor · Operations · Leeds</div></div></div>
+<div class="note">This posting is saved. It may take a few moments to appear on the public job board while the listing propagates — you don't need to do anything.</div>
+<div class="sec"><div class="sech">Saved record (as returned by the API)</div>
+<div class="g2" style="gap:10px 24px">
+<div><div class="cap">ID</div><div class="mut" style="color:#1c1c1c;font-family:ui-monospace,Menlo,monospace">job_01JQ7YV3K2WZ8NCD</div></div>
+<div><div class="cap">Slug</div><div class="mut" style="color:#1c1c1c;font-family:ui-monospace,Menlo,monospace">senior-warehouse-supervisor-leeds</div></div>
+<div><div class="cap">Created</div><div class="mut" style="color:#1c1c1c">18 Sep 2026, 14:31 GMT+1</div></div>
+<div><div class="cap">Status</div><div><span class="stat g">Published</span></div></div>
+<div><div class="cap">Closing date</div><div class="mut" style="color:#1c1c1c">23 Sep 2026</div></div>
+<div><div class="cap">Internal reference</div><div class="mut" style="color:#1c1c1c">REF-4471</div></div>
+</div></div>
+<div class="row"><span class="btn p">View on job board ↗</span><span class="btn">Post another</span><span class="btn">Back to dashboard</span></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Prove exactly what was stored, hand over the identifiers a manager will need later, and set expectations about public visibility.</p></div>
+<div><b>Data</b><p>Everything in the panel is the API response verbatim — no client reformatting beyond timezone display. Nothing is re-fetched, so the screen is truthful even if the read model lags.</p></div>
+<div><b>Interactions</b><p>"View on job board" opens App 2 in a new tab at the slug URL; if the read model hasn't caught up, App 2 shows a "listing is being published" state rather than a 404. "Post another" returns to an empty 1.4 with company defaults pre-filled. ID and slug are click-to-copy.</p></div>
+<div><b>States</b><p>Published (shown) · saved-as-draft variant swaps the chip to Draft, drops the propagation note, and replaces the board link with "Continue editing".</p></div>
+<div><b>A11y</b><p>Focus moves to the h1 on arrival and the success is announced once via a polite live region. The propagation note is plain informational text — deliberately not <code>role="alert"</code>, since nothing needs action. Record panel is a description list.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">1.6</span><span class="stitle">Edit Job Posting</span><span class="svar">populated · close-posting confirmation</span></div>
+<div class="frame">
+<div class="row" style="justify-content:space-between;align-items:flex-start">
+<div><div class="big">Senior Warehouse Supervisor</div><div class="mut">job_01JQ7YV3K2WZ8NCD · <span class="stat g" style="vertical-align:1px">Published</span> · Last updated 18 Sep 2026, 14:31 by Dana Whitfield</div></div>
+<div class="row"><span class="btn">View on board ↗</span><span class="btn d">Close posting</span></div>
+</div>
+<div class="g2" style="gap:16px">
+<div class="col">
+<div class="sec"><div class="sech">Role</div>
+<div class="col" style="gap:10px">
+<div><span class="lbl">Job title <i>*</i></span><div class="inp fl">Senior Warehouse Supervisor</div></div>
+<div><span class="lbl">Department <i>*</i></span><div class="inp fl">Operations ▾</div></div>
+<div><span class="lbl">Seniority</span><div class="inp fl">Senior ▾</div></div>
+</div></div>
+<div class="sec"><div class="sech">Compensation</div>
+<div class="g2"><div><span class="lbl">Salary min <i>*</i></span><div class="inp fl">38,000</div></div><div><span class="lbl">Salary max <i>*</i></span><div class="inp fl">46,000</div></div></div>
+<div class="hint">Sections below collapsed for brevity — layout is identical to 1.4.</div>
+</div>
+</div>
+<div class="col" style="justify-content:center;align-items:center;border:1px dashed var(--line);border-radius:3px;background:#f6f5f3;padding:20px">
+<div class="cap" style="align-self:flex-start">Confirmation dialog</div>
+<div class="card col" style="gap:12px;max-width:340px;box-shadow:0 6px 18px rgba(0,0,0,.14);border-style:solid;border-color:#9a9a9a;padding:16px">
+<div class="ttl">Close this posting?</div>
+<div class="mut">It will be removed from the public job board within a few minutes. The 24 applications received so far are kept, and you can duplicate the posting later — but it can't be re-opened.</div>
+<div><span class="lbl">Type CLOSE to confirm</span><div class="inp fo">CLOSE</div></div>
+<div class="row" style="justify-content:flex-end"><span class="btn">Keep open</span><span class="btn d">Close posting</span></div>
+</div>
+</div>
+</div>
+<div class="row" style="position:sticky;bottom:0;justify-content:space-between;border-top:1px solid #9a9a9a;background:#f4f3f1;margin:0 -16px -16px;padding:12px 16px">
+<span class="mut">No unsaved changes</span>
+<div class="row"><span class="btn">Discard changes</span><span class="btn p off">Save changes</span></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Amend a live posting with the same mental model as creating one, while making the one irreversible action feel irreversible.</p></div>
+<div><b>Data</b><p>Form hydrates from GET /jobs/:id. Server-owned and read-only here: id, slug, status, created_at, updated_at, updated_by, applicant_count. An <code>updated_at</code> mismatch on save returns 409 → conflict banner offering "reload latest" or "overwrite".</p></div>
+<div><b>Interactions</b><p>Save is disabled until the form is dirty. Closing requires typing CLOSE — a deliberate friction, since closing can't be undone. Editing a published posting republishes on save; a note under the footer says changes reach the board within a few minutes.</p></div>
+<div><b>States</b><p>Loading = skeleton form with section frames in place. Not-found / no-permission = full-page state, not a toast. Conflict (409) · saving · saved toast.</p></div>
+<div><b>A11y</b><p>Dialog is <code>role="alertdialog"</code>, focus trapped, initial focus on the confirm text input, Esc = Keep open, focus returns to the "Close posting" button on dismiss. The destructive button is described by the dialog body via <code>aria-describedby</code>.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">2.1</span><span class="stitle">Job Board / Search Results</span><span class="svar">App 2 · Search · public, anonymous · highest traffic</span></div>
+<div class="frame">
+<div class="appbar" style="background:#fff"><div class="imgx" style="width:24px;height:24px"></div><b style="font:700 13px system-ui">Northline Careers</b><div class="inp" style="flex:1;max-width:420px;margin-left:12px">warehouse supervisor <span class="mut">⌕</span></div><span class="mut" style="margin-left:auto">Browse all roles</span></div>
+<div class="row" style="align-items:flex-start;gap:16px;flex-wrap:nowrap">
+<div class="col" style="width:210px;flex:none">
+<div class="sec"><div class="sech">Filters</div>
+<div class="col" style="gap:14px">
+<div><div class="lbl">Department</div><div class="col" style="gap:5px;font:11.5px system-ui;color:#4a4a4a"><span>☑ Operations (18)</span><span>☐ Data &amp; Insight (4)</span><span>☐ People (3)</span><span>☐ Finance (2)</span><a href="#m" style="font-size:11px">Show 4 more</a></div></div>
+<div><div class="lbl">Location</div><div class="inp" style="font-size:12px;min-height:30px">City or region</div></div>
+<div><div class="lbl">Work arrangement</div><div class="col" style="gap:5px;font:11.5px system-ui;color:#4a4a4a"><span>☐ On-site (14)</span><span>☑ Hybrid (9)</span><span>☐ Remote (4)</span></div></div>
+<div><div class="lbl">Employment type</div><div class="col" style="gap:5px;font:11.5px system-ui;color:#4a4a4a"><span>☐ Full-time</span><span>☐ Part-time</span><span>☐ Contract</span><span>☐ Internship</span><span>☐ Temporary</span></div></div>
+<div><div class="lbl">Seniority</div><div class="inp" style="font-size:12px;min-height:30px">Any ▾</div></div>
+<div><div class="lbl">Salary range</div>
+<div style="height:3px;background:#dcdcdc;position:relative;margin:12px 4px"><div style="position:absolute;left:22%;right:30%;top:0;height:3px;background:var(--acc)"></div><div style="position:absolute;left:22%;top:-5px;width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid var(--acc)"></div><div style="position:absolute;right:30%;top:-5px;width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid var(--acc)"></div></div>
+<div class="hint">£35,000 – £60,000</div></div>
+<div><div class="lbl">Posted within</div><div class="col" style="gap:5px;font:11.5px system-ui;color:#4a4a4a"><span>◉ Any time</span><span>○ Last 24 hours</span><span>○ Last 7 days</span><span>○ Last 30 days</span></div></div>
+</div></div>
+</div>
+<div class="col" style="flex:1;min-width:0">
+<div class="row" style="gap:6px"><span class="chip on">Operations ✕</span><span class="chip on">Hybrid ✕</span><span class="chip on">£35k–£60k ✕</span><a href="#c" style="font:11.5px system-ui;margin-left:4px">Clear all</a></div>
+<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:8px"><span class="mut"><b style="color:#1c1c1c">9 jobs</b> matching “warehouse supervisor”</span><div class="inp" style="width:170px;min-height:30px;font-size:12px">Sort: Most recent ▾</div></div>
+<div class="card col" style="gap:6px">
+<div class="row" style="justify-content:space-between"><span class="ttl">Senior Warehouse Supervisor</span><span class="stat w">Closes in 5 days</span></div>
+<div class="mut">Operations · Leeds, West Yorkshire <span class="chip" style="font-size:10px;padding:1px 7px">Hybrid</span> · Full-time</div>
+<div class="row" style="gap:12px"><b style="font:600 12.5px system-ui">£38,000 – £46,000 / year</b><span class="mut">Posted 2 days ago</span></div>
+<div class="mut" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">Northline's Leeds distribution hub handles 40,000 outbound units a week. You'll own the evening shift, lead a team of 14, and hold the pick-accuracy and dispatch-on-time targets for the site…</div>
+</div>
+<div class="card col" style="gap:6px">
+<div class="row" style="justify-content:space-between"><span class="ttl">Fleet Maintenance Technician</span></div>
+<div class="mut">Operations · Rotherham <span class="chip" style="font-size:10px;padding:1px 7px">On-site</span> · Full-time</div>
+<div class="row" style="gap:12px"><b style="font:600 12.5px system-ui">£31,500 – £36,000 / year</b><span class="mut">Posted 7 days ago</span></div>
+<div class="mut" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">Keep a 60-vehicle HGV fleet compliant and on the road. Scheduled servicing, roadside call-outs and MOT prep, working alongside two technicians…</div>
+</div>
+<div class="card col" style="gap:6px">
+<div class="row" style="justify-content:space-between"><span class="ttl">Inbound Shift Lead</span></div>
+<div class="mut">Operations · Leeds <span class="chip" style="font-size:10px;padding:1px 7px">Hybrid</span> · Contract · 12 months</div>
+<div class="row" style="gap:12px"><b style="font:600 12.5px system-ui">£35,000 – £39,000 / year</b><span class="mut">Posted 11 days ago</span></div>
+<div class="mut" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">Run the 06:00 inbound window across three bays, coordinating hauliers and goods-in checks…</div>
+</div>
+<div class="row" style="justify-content:center;padding-top:6px"><span class="btn">Load more (6 remaining)</span></div>
+</div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Let an anonymous candidate go from a vague keyword to a shortlist in a handful of clicks, on the page that carries most of the traffic.</p></div>
+<div><b>Data</b><p>API: results page (title, department, location, arrangement, type, salary min/max/currency/period/hidden, posted_at, closes_at, description excerpt, slug) plus facet counts and total. Client-derived: “posted 2 days ago”, “closes in 5 days” (7-day threshold), the salary string assembled from the numeric parts, and the two-line clamp.</p></div>
+<div><b>Interactions</b><p>Keyword search submits on Enter and debounced at 400ms. Every filter writes to the URL query string, so results are shareable, bookmarkable and back-button-safe. Chips mirror active filters and remove them on click. Sort is a select. “Load more” appends and moves focus to the first new card. Salary slider is keyboard-operable with arrow/PageUp/PageDown.</p></div>
+<div><b>States</b><p>Loading, no-results and error are drawn in 2.2. Results are eventually consistent, so a posting published seconds ago may not appear yet — no special UI here, only on the detail deep-link.</p></div>
+<div><b>A11y</b><p>h1 is the search heading; each card title is an h2 wrapping the only link (whole card clickable, one tab stop). Filter rail is a <code>nav aria-label="Filters"</code> of fieldsets; tab order is rail → chips → sort → results. The results count is the <code>aria-live="polite"</code> region and announces “9 jobs” after every filter change, debounced. Chips are buttons named “Remove filter Operations”.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">2.2</span><span class="stitle">Search — loading, no results, error/offline</span></div>
+<div class="frame">
+<div class="g3">
+<div class="col"><div class="cap">A — Skeleton</div>
+<div class="card col" style="gap:12px">
+<div class="row" style="justify-content:space-between"><div class="skel" style="width:90px"></div><div class="skel" style="width:110px"></div></div>
+<div class="card col" style="gap:8px"><div class="skel" style="width:60%;height:14px"></div><div class="skel" style="width:45%"></div><div class="skel" style="width:35%"></div><div class="skel" style="width:100%;height:9px"></div><div class="skel" style="width:80%;height:9px"></div></div>
+<div class="card col" style="gap:8px"><div class="skel" style="width:52%;height:14px"></div><div class="skel" style="width:48%"></div><div class="skel" style="width:30%"></div><div class="skel" style="width:100%;height:9px"></div><div class="skel" style="width:72%;height:9px"></div></div>
+<div class="card col" style="gap:8px"><div class="skel" style="width:64%;height:14px"></div><div class="skel" style="width:40%"></div><div class="skel" style="width:33%"></div><div class="skel" style="width:95%;height:9px"></div></div>
+<div class="hint">3 skeleton cards, same geometry as real cards so nothing shifts on arrival.</div>
+</div></div>
+<div class="col"><div class="cap">B — No results</div>
+<div class="card col" style="gap:12px">
+<div class="row" style="gap:6px"><span class="chip on">Finance ✕</span><span class="chip on">Remote ✕</span><span class="chip on">£80k+ ✕</span></div>
+<div class="col" style="align-items:center;text-align:center;gap:10px;padding:22px 8px">
+<div class="imgx" style="width:56px;height:44px"></div>
+<div class="ttl">No jobs match these filters</div>
+<div class="mut" style="max-width:250px">Try widening the salary range, or removing the Remote filter — 4 Finance roles are hybrid.</div>
+<div class="row" style="justify-content:center"><span class="btn p">Clear all filters</span><span class="btn">Remove “Remote”</span></div>
+</div>
+<div class="hint">Suggestions come from facet counts: we only propose a relaxation we know returns results.</div>
+</div></div>
+<div class="col"><div class="cap">C — Error / offline</div>
+<div class="card col" style="gap:12px">
+<div class="banner">We couldn't load jobs just now. Your filters are saved in the address bar.</div>
+<div class="col" style="align-items:center;text-align:center;gap:10px;padding:20px 8px">
+<div class="imgx" style="width:56px;height:44px"></div>
+<div class="ttl">Connection problem</div>
+<div class="mut" style="max-width:240px">Check your connection and try again. Nothing you typed has been lost.</div>
+<div class="btn p">Try again</div>
+<div class="hint">Auto-retries twice with backoff before showing this.</div>
+</div>
+</div></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Keep a high-traffic, high-bounce page feeling fast and recoverable when the data isn't there.</p></div>
+<div><b>Data</b><p>No-results suggestions are built from the facet counts returned alongside the empty result set.</p></div>
+<div><b>Interactions</b><p>Skeleton appears only after 200ms. Filters and keyword stay in the URL through every failure, so Try again re-runs the exact query. Offline detection uses the network status event plus the failed request.</p></div>
+<div><b>States</b><p>Loading → populated / no-results / error. Partial failure (facets load, results don't) degrades to the error panel with the rail still usable.</p></div>
+<div><b>A11y</b><p>Skeletons are <code>aria-hidden</code> inside a container with <code>aria-busy="true"</code>; the live region says “Loading jobs”, then “9 jobs found” or “No jobs found”. The error banner is <code>role="alert"</code> and Try again receives focus.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">2.3</span><span class="stitle">Job Detail</span><span class="svar">full posting · sticky apply · closed variant</span></div>
+<div class="frame">
+<div class="appbar" style="background:#fff"><div class="imgx" style="width:22px;height:22px"></div><b style="font:700 12.5px system-ui">Northline Careers</b><span class="mut" style="margin-left:12px">← Back to 9 results</span></div>
+<div class="row" style="align-items:flex-start;gap:16px;flex-wrap:nowrap">
+<div class="col" style="flex:1;min-width:0">
+<div class="sec">
+<div class="row" style="justify-content:space-between;align-items:flex-start">
+<div class="col" style="gap:6px">
+<div class="big">Senior Warehouse Supervisor</div>
+<div class="mut">Operations · Leeds, West Yorkshire <span class="chip" style="font-size:10px;padding:1px 7px">Hybrid</span> · Full-time · Senior</div>
+<div class="row" style="gap:12px"><b style="font:600 14px system-ui">£38,000 – £46,000 / year</b><span class="mut">Posted 2 days ago</span><span class="stat w">Closes 23 Sep — 5 days</span></div>
+</div>
+<div class="btn p">Apply now</div>
+</div>
+<div class="hint">Apply is sticky: it detaches into a floating bar once this header scrolls out of view.</div>
+</div>
+<div class="col" style="gap:14px">
+<div><div class="sech">About the role</div><div class="mut" style="line-height:1.65">Northline's Leeds distribution hub handles 40,000 outbound units a week across ambient and chilled lines. You'll own the evening shift end to end — people, pick accuracy and dispatch-on-time — reporting to the Site Operations Manager and working closely with transport planning.</div></div>
+<div><div class="sech">Responsibilities</div><ul class="mut" style="line-height:1.7;margin:0;padding-left:18px"><li>Lead and schedule a team of 14 pickers, loaders and a goods-in checker</li><li>Hold 99.2% pick accuracy and 98% dispatch-on-time across the shift</li><li>Run daily start-up briefs and weekly one-to-ones</li><li>Own shift-level H&amp;S walkarounds and near-miss reporting</li></ul></div>
+<div><div class="sech">Requirements</div><ul class="mut" style="line-height:1.7;margin:0;padding-left:18px"><li>3+ years supervising in a high-throughput warehouse</li><li>Confident with a warehouse management system</li><li>IOSH Managing Safely, or willingness to complete within 6 months</li><li>Counterbalance licence desirable, not required</li></ul></div>
+<div><div class="sech">Skills</div><div class="row" style="gap:6px"><span class="chip">Warehouse ops</span><span class="chip">WMS</span><span class="chip">Team leadership</span><span class="chip">H&amp;S</span><span class="chip">Shift planning</span></div></div>
+</div>
+</div>
+<div class="col" style="width:230px;flex:none">
+<div class="sec"><div class="sech">At a glance</div>
+<div class="col" style="gap:7px;font:11.5px/1.4 system-ui;color:#4a4a4a">
+<div class="row" style="justify-content:space-between"><span class="mut">Department</span><b>Operations</b></div>
+<div class="row" style="justify-content:space-between"><span class="mut">Arrangement</span><b>Hybrid</b></div>
+<div class="row" style="justify-content:space-between"><span class="mut">Type</span><b>Full-time</b></div>
+<div class="row" style="justify-content:space-between"><span class="mut">Seniority</span><b>Senior</b></div>
+<div class="row" style="justify-content:space-between"><span class="mut">Openings</span><b>2</b></div>
+<div class="row" style="justify-content:space-between"><span class="mut">Closes</span><b>23 Sep 2026</b></div>
+<div class="row" style="justify-content:space-between"><span class="mut">Reference</span><b>NL-4471</b></div>
+</div></div>
+<div class="sec"><div class="sech">Share</div><div class="row" style="gap:6px"><span class="btn sm">Copy link</span><span class="btn sm">Email</span><span class="btn sm">LinkedIn</span></div></div>
+<div class="sec"><div class="sech">Similar roles</div>
+<div class="col" style="gap:10px">
+<div><a href="#s1" style="font:600 12px system-ui">Inbound Shift Lead</a><div class="mut">Leeds · Hybrid · £35k–£39k</div></div>
+<div><a href="#s2" style="font:600 12px system-ui">Warehouse Team Leader</a><div class="mut">Doncaster · On-site · £32k–£35k</div></div>
+<div><a href="#s3" style="font:600 12px system-ui">Dispatch Supervisor</a><div class="mut">Rotherham · On-site · £34k–£38k</div></div>
+</div></div>
+</div>
+</div>
+<div class="sec" style="border-color:#9a9a9a">
+<div class="cap" style="margin-bottom:8px">Variant — closed / expired posting</div>
+<div class="banner" style="border-color:#8a6a2f;background:#fbf7ef;color:#6d5320">This posting closed on 11 Aug 2026 and is no longer accepting applications. <a href="#b">Browse 9 similar open roles →</a></div>
+<div class="row" style="justify-content:space-between;margin-top:10px"><div><div class="ttl" style="color:#6b6b6b">HR Business Partner</div><div class="mut">People · Leeds · Hybrid · Full-time</div></div><span class="btn p off">Applications closed</span></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Give a candidate everything needed to decide, with Apply always within reach and the deadline impossible to miss.</p></div>
+<div><b>Data</b><p>API: full posting by slug, plus a server-ranked similar-roles list. Client-derived: relative posted date, days-to-close warning, assembled salary string, and the closed determination (status OR closes_at in the past).</p></div>
+<div><b>Interactions</b><p>Apply follows the posting's application email (mailto) or URL (new tab). Copy link writes the canonical slug URL and fires a toast. Deep-linking a slug that hasn't propagated yet shows “this listing is being published — refresh in a moment”, never a 404.</p></div>
+<div><b>States</b><p>Open · closing soon (amber chip) · closed/expired (banner + disabled Apply) · loading skeleton mirroring this layout · 404 for a slug that never existed.</p></div>
+<div><b>A11y</b><p>h1 is the job title; h2s in reading order (About → Responsibilities → Requirements → Skills) with the sidebar after them in the DOM. Disabled Apply uses <code>aria-disabled</code> described by the banner, so the reason is announced. Copy-link toast is a polite live region. Scroll padding keeps the sticky Apply bar off the focused element.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">2.4</span><span class="stitle">Mobile — results &amp; detail</span><span class="svar">≈390px · App 2</span></div>
+<div class="frame">
+<div class="row" style="gap:24px;align-items:flex-start">
+<div class="col"><div class="cap">A — Results + filter sheet trigger</div>
+<div class="phone">
+<div class="row" style="justify-content:space-between"><div class="row" style="gap:8px"><div class="imgx" style="width:20px;height:20px"></div><b style="font:700 12px system-ui">Northline Careers</b></div><span class="mut">☰</span></div>
+<div class="inp" style="min-height:38px">warehouse supervisor ⌕</div>
+<div class="row" style="justify-content:space-between"><span class="btn sm">⚙ Filters · 3</span><span class="inp" style="min-height:28px;width:130px;font-size:11.5px">Most recent ▾</span></div>
+<div class="row" style="gap:5px"><span class="chip on" style="font-size:10px">Operations ✕</span><span class="chip on" style="font-size:10px">Hybrid ✕</span><span class="chip on" style="font-size:10px">£35k+ ✕</span></div>
+<div class="mut"><b style="color:#1c1c1c">9 jobs</b></div>
+<div class="card col" style="gap:5px">
+<div class="ttl" style="font-size:13px">Senior Warehouse Supervisor</div>
+<div class="mut">Operations · Leeds · Hybrid</div>
+<div class="mut" style="color:#1c1c1c;font-weight:600">£38,000 – £46,000</div>
+<div class="row" style="justify-content:space-between"><span class="mut">2 days ago</span><span class="stat w">5 days left</span></div>
+</div>
+<div class="card col" style="gap:5px">
+<div class="ttl" style="font-size:13px">Fleet Maintenance Technician</div>
+<div class="mut">Operations · Rotherham · On-site</div>
+<div class="mut" style="color:#1c1c1c;font-weight:600">£31,500 – £36,000</div>
+<div class="mut">7 days ago</div>
+</div>
+<div class="btn" style="justify-content:center">Load more</div>
+<div style="border:1px solid #6e6e6e;border-radius:12px 12px 0 0;background:#f4f3f1;padding:12px;margin:8px -10px -10px">
+<div class="row" style="justify-content:center;margin-bottom:8px"><div style="width:36px;height:4px;border-radius:99px;background:#b0b0b0"></div></div>
+<div class="row" style="justify-content:space-between;margin-bottom:10px"><b style="font:700 12.5px system-ui">Filters</b><span class="mut">Clear all</span></div>
+<div class="col" style="gap:8px;font:11.5px system-ui;color:#4a4a4a"><span>Department ▾</span><span>Location ▾</span><span>Work arrangement ▾</span><span>Salary range ▾</span></div>
+<div class="btn p" style="justify-content:center;margin-top:12px">Show 9 jobs</div>
+</div>
+</div></div>
+<div class="col"><div class="cap">B — Job detail + fixed apply bar</div>
+<div class="phone">
+<div class="row" style="justify-content:space-between"><span class="mut">← Results</span><span class="mut">⤴ Share</span></div>
+<div class="ttl" style="font-size:16px">Senior Warehouse Supervisor</div>
+<div class="mut">Operations · Leeds, West Yorkshire</div>
+<div class="row" style="gap:6px"><span class="chip" style="font-size:10px">Hybrid</span><span class="chip" style="font-size:10px">Full-time</span><span class="chip" style="font-size:10px">Senior</span></div>
+<div style="font:600 14px system-ui">£38,000 – £46,000 / year</div>
+<div class="row" style="justify-content:space-between"><span class="mut">Posted 2 days ago</span><span class="stat w">Closes 23 Sep</span></div>
+<div class="sech" style="margin:4px 0 0">About the role</div>
+<div class="mut" style="line-height:1.6">Northline's Leeds hub handles 40,000 outbound units a week. You'll own the evening shift end to end — people, pick accuracy and dispatch-on-time…</div>
+<div class="sech" style="margin:4px 0 0">Responsibilities</div>
+<ul class="mut" style="margin:0;padding-left:16px;line-height:1.6"><li>Lead a team of 14</li><li>Hold 99.2% pick accuracy</li><li>Daily briefs, weekly one-to-ones</li></ul>
+<div class="sec" style="padding:8px"><div class="sech">At a glance</div><div class="mut">Openings 2 · Ref NL-4471 · Closes 23 Sep 2026</div></div>
+<div style="height:46px"></div>
+<div class="row" style="border-top:1px solid #6e6e6e;background:#f4f3f1;margin:-10px -10px 0;padding:10px;gap:8px"><div class="btn" style="flex:none">♡</div><div class="btn p" style="flex:1;justify-content:center;min-height:44px">Apply now</div></div>
+</div></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Serve the majority of App 2's traffic: one-thumb browsing and a single unmissable Apply.</p></div>
+<div><b>Data</b><p>Same payload as desktop; the card drops the description clamp and the arrangement badge merges into the meta line to keep cards under one thumb-scroll.</p></div>
+<div><b>Interactions</b><p>The Filters button shows the active count and opens a bottom sheet; the sheet's primary button states the result count so the candidate sees the effect before committing. Sheet is dismissible by swipe-down, backdrop tap, or Esc. Apply bar is <code>position:fixed</code> with a 44px minimum target and safe-area padding.</p></div>
+<div><b>States</b><p>Sheet open/closed; sticky bar shows “Applications closed” disabled on a closed posting; chips wrap to a second row rather than scrolling horizontally.</p></div>
+<div><b>A11y</b><p>Sheet is a focus-trapped <code>role="dialog"</code> with <code>aria-modal</code>; opening moves focus to its heading, closing returns it to the Filters button. Background content gets <code>aria-hidden</code> while it's open. The fixed Apply bar is last in the DOM but reachable early via a skip link on the detail page.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">3.1</span><span class="stitle">Shared layout skeleton</span><span class="svar">family resemblance, deliberate differences</span></div>
+<div class="frame">
+<div class="g2" style="gap:20px">
+<div class="col">
+<div class="cap">App 1 — Post (authenticated, dense)</div>
+<div style="border:1px solid #9a9a9a;border-radius:3px">
+<div class="appbar" style="border:0;border-bottom:1px solid var(--line);border-radius:0"><div class="imgx" style="width:22px;height:22px"></div><b style="font:700 12.5px system-ui">Post</b><span class="mut">Postings</span><span class="mut">Company</span><span class="mut">Settings</span><div class="row" style="margin-left:auto;gap:8px"><span class="chip" style="font-size:10px">⇄ Job board ↗</span><span class="mut">Dana W.</span><div class="imgx" style="width:22px;height:22px;border-radius:50%"></div></div></div>
+<div style="padding:12px"><div class="mut" style="margin-bottom:8px">Breadcrumb / page title</div><div class="dash" style="height:150px;border:1px dashed var(--line);border-radius:3px;display:flex;align-items:center;justify-content:center;color:#a0a0a0;font:11px system-ui">Content — max-width 1080px, single column, dense forms &amp; tables</div></div>
+</div>
+<div class="hint">Persistent left-aligned nav, signed-in identity, app switcher to the public board. No marketing chrome, no footer beyond a thin legal line.</div>
+</div>
+<div class="col">
+<div class="cap">App 2 — Search (anonymous, wide)</div>
+<div style="border:1px solid #9a9a9a;border-radius:3px">
+<div class="appbar" style="border:0;border-bottom:1px solid var(--line);border-radius:0;background:#fff"><div class="imgx" style="width:22px;height:22px"></div><b style="font:700 12.5px system-ui">Northline Careers</b><div class="inp" style="flex:1;max-width:220px;min-height:28px;font-size:11.5px;margin-left:8px">Search roles ⌕</div><span class="mut" style="margin-left:auto">All roles</span><span class="mut">Life at Northline</span></div>
+<div style="padding:12px"><div class="dash" style="height:150px;border:1px dashed var(--line);border-radius:3px;display:flex;align-items:center;justify-content:center;color:#a0a0a0;font:11px system-ui">Content — max-width 1240px, rail + results, generous line-height</div></div>
+<div style="border-top:1px dashed var(--line);padding:10px 12px" class="mut">Footer: about · equal-opportunity statement · privacy · sitemap</div>
+</div>
+<div class="hint">No auth chrome at all — no login link, no account menu. Search lives in the header because it's the primary action. Real footer for SEO and trust.</div>
+</div>
+</div>
+<div class="note" style="margin-top:4px">Shared: type scale, 8px spacing, component library, status-chip vocabulary, focus ring, accent. Divergent: container width, density, nav contents, presence of auth and footer.</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Show reviewers exactly where the two apps are one product and where they intentionally part ways.</p></div>
+<div><b>Data</b><p>App 1 header needs the session (name, company, avatar). App 2 renders identically for every visitor, so its shell is fully cacheable at the edge — one reason auth chrome is absent rather than conditional.</p></div>
+<div><b>Interactions</b><p>App switcher in App 1 opens the public board in a new tab. App 2's header search submits to 2.1 with the keyword param.</p></div>
+<div><b>States</b><p>App 1: session expired → redirect to 1.2 preserving the intended URL. App 2: no logged-in state exists.</p></div>
+<div><b>A11y</b><p>Both: skip-to-content link as the first focusable element, one <code>&lt;main&gt;</code>, landmarks for banner/nav/main/contentinfo. Nav uses <code>aria-current="page"</code>. Focus ring is the same 3px accent outline in both apps.</p></div>
+</div>
+</div>
+
+<div class="scr">
+<div class="shd"><span class="snum">3.2</span><span class="stitle">Component inventory</span><span class="svar">default / hover / focus / disabled / error</span></div>
+<div class="frame">
+<div class="g3" style="gap:16px">
+<div class="sec"><div class="sech">Text input</div><div class="col" style="gap:8px">
+<div class="inp">Default placeholder</div>
+<div class="inp fl" style="border-color:#8a8a8a">Hover — border darkens</div>
+<div class="inp fl fo">Focus — 3px accent ring</div>
+<div class="inp di">Disabled</div>
+<div><div class="inp er">Error value</div><div class="ferr">Enter a valid value.</div></div>
+</div></div>
+<div class="sec"><div class="sech">Select / combo-box</div><div class="col" style="gap:8px">
+<div class="inp">Choose one <span class="mut">▾</span></div>
+<div class="inp fl fo">Operations <span class="mut">▾</span></div>
+<div class="card" style="padding:0">
+<div style="padding:6px 9px;font:12px system-ui;background:#eef3fb">Operations</div>
+<div style="padding:6px 9px;font:12px system-ui">Data &amp; Insight</div>
+<div style="padding:6px 9px;font:12px system-ui;color:#8c8c8c">+ Create “Fleet”</div>
+</div>
+<div class="inp di">Disabled ▾</div>
+</div></div>
+<div class="sec"><div class="sech">Segmented control</div><div class="col" style="gap:8px">
+<div class="seg"><span class="on">On-site</span><span>Hybrid</span><span>Remote</span></div>
+<div class="seg" style="box-shadow:0 0 0 3px rgba(47,111,208,.28);border-color:var(--acc)"><span>On-site</span><span class="on">Hybrid</span><span>Remote</span></div>
+<div class="seg" style="opacity:.45"><span class="on">On-site</span><span>Hybrid</span><span>Remote</span></div>
+<div class="hint">Radio group semantics; arrow keys move and select.</div>
+</div></div>
+<div class="sec"><div class="sech">Date picker trigger</div><div class="col" style="gap:8px">
+<div class="inp">dd / mm / yyyy <span class="mut">▦</span></div>
+<div class="inp fl fo">23 Sep 2026 <span class="mut">▦</span></div>
+<div class="inp fl er">14 Aug 2026 <span class="mut">▦</span></div>
+<div class="ferr" style="margin-top:0">Closing date must be in the future.</div>
+<div class="inp di">— ▦</div>
+</div></div>
+<div class="sec"><div class="sech">Chip input</div><div class="col" style="gap:8px">
+<div class="inp" style="flex-wrap:wrap;justify-content:flex-start;gap:5px"><span class="chip">WMS ✕</span><span class="chip">H&amp;S ✕</span><span class="mut">Add a skill…</span></div>
+<div class="inp fo" style="flex-wrap:wrap;justify-content:flex-start;gap:5px"><span class="chip">WMS ✕</span><span class="chip" style="border-color:var(--acc)">H&amp;S ✕</span><span class="mut">|</span></div>
+<div class="inp er" style="flex-wrap:wrap;justify-content:flex-start;gap:5px"><span class="chip">WMS ✕</span></div>
+<div class="ferr" style="margin-top:0">Maximum 10 skills.</div>
+</div></div>
+<div class="sec"><div class="sech">Buttons</div><div class="col" style="gap:8px">
+<div class="row"><span class="btn p">Primary</span><span class="btn p" style="background:#25599f;border-color:#25599f">Hover</span><span class="btn p" style="box-shadow:0 0 0 3px rgba(47,111,208,.35)">Focus</span></div>
+<div class="row"><span class="btn">Secondary</span><span class="btn" style="background:#f0efed">Hover</span><span class="btn off">Disabled</span></div>
+<div class="row"><span class="btn d">Destructive</span><span class="btn" style="border-color:transparent">Ghost</span><span class="btn p off">◐ Loading</span></div>
+</div></div>
+<div class="sec"><div class="sech">Status chip</div><div class="row" style="gap:6px">
+<span class="stat">Draft</span><span class="stat g">Published</span><span class="stat">Closed</span><span class="stat">Expired</span><span class="stat w">Closes in 5 days</span>
+</div><div class="hint">Text carries the meaning; weight and border differentiate, never colour alone.</div></div>
+<div class="sec"><div class="sech">Skeleton row</div><div class="col" style="gap:8px">
+<div class="row" style="gap:8px"><div class="skel" style="flex:2"></div><div class="skel" style="flex:1"></div><div class="skel" style="width:48px"></div></div>
+<div class="row" style="gap:8px"><div class="skel" style="flex:2"></div><div class="skel" style="flex:1"></div><div class="skel" style="width:48px"></div></div>
+<div class="hint">No shimmer animation — static grey, prefers-reduced-motion safe by default.</div>
+</div></div>
+<div class="sec"><div class="sech">Toast</div><div class="col" style="gap:8px">
+<div class="card row" style="justify-content:space-between;border-style:solid;border-color:#6e6e6e"><span class="mut" style="color:#1c1c1c">Draft saved</span><span class="mut">✕</span></div>
+<div class="card row" style="justify-content:space-between;border-style:solid;border-color:var(--red);background:#fbf2f2"><span style="font:12px system-ui;color:#7a2626">Couldn't save — retry</span><span class="mut">✕</span></div>
+<div class="hint">5s auto-dismiss, paused on hover/focus; errors never auto-dismiss.</div>
+</div></div>
+<div class="sec"><div class="sech">Inline field error</div><div class="col" style="gap:6px">
+<span class="lbl">Salary max <i>*</i></span>
+<div class="inp fl er">38,000</div>
+<div class="ferr">⚠ Minimum salary must be lower than maximum.</div>
+<div class="hint">Anchored under the field or field pair; icon + text, 12px, never colour alone.</div>
+</div></div>
+<div class="sec"><div class="sech">Error summary banner</div>
+<div class="banner" style="display:flex;flex-direction:column;gap:5px"><b>2 problems need attention</b><span>1. <a href="#x1">Closing date</a> must be in the future.</span><span>2. <a href="#x2">Reference code</a> is already in use.</span></div>
+<div class="hint">Focused on arrival; each line focuses its input.</div></div>
+<div class="sec"><div class="sech">Pagination</div><div class="col" style="gap:8px">
+<div class="row" style="gap:5px"><span class="btn sm off">←</span><span class="btn sm p">1</span><span class="btn sm">2</span><span class="btn sm">3</span><span class="mut">…</span><span class="btn sm">9</span><span class="btn sm">→</span></div>
+<div class="row"><span class="btn" style="flex:1;justify-content:center">Load more (6 remaining)</span></div>
+<div class="hint">App 1 paginates (stable, auditable); App 2 loads more (scannable, SEO pages still exist behind ?page=).</div>
+</div></div>
+</div>
+</div>
+<div class="ann">
+<div><b>Purpose</b><p>Freeze the primitives both apps share so the build step has one source of truth for states.</p></div>
+<div><b>Data</b><p>None — presentational only. Copy shown is illustrative.</p></div>
+<div><b>Interactions</b><p>Every control has a visible focus ring (3px accent, 2px offset) that is never removed on mouse use. Hover states are advisory only; nothing is hover-only.</p></div>
+<div><b>States</b><p>Default, hover, focus, disabled, error, loading — drawn for each primitive above. Disabled controls stay in the tab order via <code>aria-disabled</code> where the reason must be announced.</p></div>
+<div><b>A11y</b><p>Minimum contrast 4.5:1 for text, 3:1 for borders and icons. Touch targets ≥44px in App 2 mobile. Error text is programmatically linked, not adjacent-only. Toasts are polite live regions; error toasts are <code>role="alert"</code>.</p></div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#2f6fd0&quot;,&quot;options&quot;:[&quot;#2f6fd0&quot;,&quot;#1c1c1c&quot;,&quot;#6b3fa0&quot;,&quot;#1f7a5c&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Wireframe style&quot;},&quot;showAnnotations&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Wireframe style&quot;},&quot;annotationSide&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;right&quot;,&quot;below&quot;],&quot;default&quot;:&quot;right&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Wireframe style&quot;}}">class Component extends DCLogic {
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+  apply() {
+    const acc = this.props.accent ?? "#2f6fd0";
+    const show = this.props.showAnnotations ?? true;
+    const side = this.props.annotationSide ?? "right";
+    let el = document.getElementById("__wf_tweaks");
+    if (!el) { el = document.createElement("style"); el.id = "__wf_tweaks"; document.head.appendChild(el); }
+    el.textContent = `:root{--acc:${acc}}`
+      + (show ? "" : ".ann{display:none}")
+      + (side === "below" ? ".scr{grid-template-columns:minmax(0,1fr)}" : "");
+  }
+  renderVals() { return {}; }
+}</script>
+</body>
+</html>

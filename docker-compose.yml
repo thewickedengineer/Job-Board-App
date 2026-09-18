@@ -1,0 +1,4 @@
+# Filled in during Phase 9 (Docker). Kept as a valid, empty compose file so
+# `docker compose config` succeeds on a clean checkout.
+name: talentbridge
+services: {}
