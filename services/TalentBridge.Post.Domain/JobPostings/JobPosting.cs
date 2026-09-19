@@ -56,47 +56,72 @@ public sealed class JobPosting
 
     private JobPosting() { }
 
-    public static JobPosting Create(Guid managerId, JobPostingContent content, string slug, DateTimeOffset now)
+    public static JobPosting Create(Guid managerId, JobPostingContent content, string slug, bool publish, DateTimeOffset now)
     {
         var posting = new JobPosting
         {
             Id = Guid.CreateVersion7(),
             ManagerId = managerId,
             Slug = slug,
-            Status = JobPostingStatus.Published,
+            Status = JobPostingStatus.Draft,
             CreatedAt = now,
             UpdatedAt = now,
-            PublishedAt = now,
             Version = 1,
         };
         posting.Apply(content);
+        if (publish)
+        {
+            posting.Status = JobPostingStatus.Published;
+            posting.PublishedAt = now;
+        }
+
         return posting;
     }
 
-    public void Update(JobPostingContent content, DateTimeOffset now)
+    public bool IsDraft => Status == JobPostingStatus.Draft;
+    public bool IsPublished => Status == JobPostingStatus.Published;
+    public bool IsClosed => Status == JobPostingStatus.Closed;
+
+    /// <summary>
+    /// Replace the editable content and, optionally, promote a draft to
+    /// published. A published posting stays published (it cannot revert to
+    /// draft) and a closed posting cannot be edited at all.
+    /// </summary>
+    public void Update(JobPostingContent content, bool publish, DateTimeOffset now)
     {
-        if (Status == JobPostingStatus.Closed)
+        if (IsClosed)
         {
             throw new InvalidOperationException("A closed posting cannot be edited.");
         }
 
         Apply(content);
+        if (publish && IsDraft)
+        {
+            Status = JobPostingStatus.Published;
+            PublishedAt = now;
+        }
+
         Touch(now);
     }
 
-    public void Close(DateTimeOffset now)
+    /// <summary>Irreversible. Returns false when the posting was already closed.</summary>
+    public bool Close(DateTimeOffset now)
     {
-        if (Status == JobPostingStatus.Closed)
+        if (IsClosed)
         {
-            return;
+            return false;
         }
 
         Status = JobPostingStatus.Closed;
         Touch(now);
+        return true;
     }
 
-    public bool IsOpenOn(DateOnly today) =>
-        Status == JobPostingStatus.Published && ClosingDate >= today;
+    public bool IsOpenOn(DateOnly today) => IsPublished && ClosingDate >= today;
+
+    /// <summary>The dashboard's notion of status: Published postings past their closing date show as Expired.</summary>
+    public string EffectiveStatusOn(DateOnly today) =>
+        IsPublished && ClosingDate < today ? JobPostingStatus.Expired : Status;
 
     private void Apply(JobPostingContent c)
     {

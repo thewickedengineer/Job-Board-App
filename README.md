@@ -9,7 +9,7 @@ The full design is in [`CLAUDE.md`](./CLAUDE.md). This README tracks what is act
 
 ## Status
 
-**Phase 3 — Post API auth.** Managers can sign up, log in, refresh, log out, and read `/api/me`. Self-issued HS256 JWTs (15 min) plus rotating, hashed-at-rest refresh tokens (14 days) in an `httpOnly` `SameSite=Strict` cookie. Login and signup are rate-limited per IP. Every 4xx/5xx is RFC 9457 problem details; validation failures use camelCase keys that match the Angular form controls. No job-posting endpoints yet.
+**Phase 4 — Post API job postings.** Managers can create, list, read, update and close their own postings. Validation is the §6 matrix in FluentValidation, returned as RFC 9457 `ValidationProblemDetails` with camelCase keys that match the Angular form controls. Every publish/update/close writes an `outbox_messages` row in the same transaction as the posting; the publisher that delivers those rows is Phase 5. Auth from Phase 3 is unchanged.
 
 ## Layout
 
@@ -108,6 +108,24 @@ The Post API also applies pending migrations itself on startup when `ASPNETCORE_
 - Work-email rule (from wireframe 1.1): signup rejects common personal mailbox domains (gmail, outlook, yahoo, icloud, …).
 
 `services/TalentBridge.Post.Api/TalentBridge.Post.Api.http` walks the whole cycle; `TalentBridge.Post.Tests/Integration` does the same automatically against a Testcontainers Postgres.
+
+## Job postings (Post API)
+
+| Endpoint | Result |
+|---|---|
+| `POST /api/job-postings` | `201` + `Location`, body is the complete persisted record (`id`, `slug`, `status`, `version`, timestamps are server-owned) |
+| `GET /api/job-postings?q=&status=&sort=&page=&pageSize=` | `200 { items[], page, pageSize, total, totalPages }` — the caller's own postings only |
+| `GET /api/job-postings/{id}` | `200` or `404` (also for someone else's posting) |
+| `PUT /api/job-postings/{id}` | `200`; body must include the `version` loaded — stale → `409`; closed → `409` |
+| `POST /api/job-postings/{id}/close` | `200`; irreversible, idempotent |
+
+- **Validation** (`JobPostings/JobPostingValidators.cs`): title 3–120, department 2–80, location 2–120 unless Remote (then the country stands in), description 50–10,000, salaries > 0 and ≤ 10,000,000 with min strictly below max (keyed to `salaryMax`), ISO currency from the allowed list, closing date strictly after today in UTC, closed vocabularies for employment type / seniority / work arrangement / pay period, openings 1–999, email and absolute http(s) URL when present, ≤ 20 skills of 1–40 chars (keyed to `skills`). `CreateJobPostingValidatorTests` covers every boundary.
+- **Status**: `Draft` or `Published` on create/update. Drafts are fully validated (the schema's NOT NULL columns allow nothing looser) but never projected to the board. A published posting cannot revert to draft. Reads report `Expired` for a published posting whose closing date has passed; it is derived, never stored.
+- **Slug**: `title-place` (`senior-warehouse-supervisor-leeds`), assigned once and never changed; collisions get `-2`, `-3`, … and a true race falls back to a random tail.
+- **Reference code** is optional and unique within a manager's postings (partial unique index; a clash is a `400` keyed to `referenceCode`).
+- **Concurrency**: `version` is the EF concurrency token and increments on every mutation. It is also carried on every projection message so the read side can discard stale updates.
+- **Outbox**: `Enqueue()` in `JobPostingEndpoints.cs` adds a `job-posting.changed` row (full `JobProjectionMessage` snapshot) to the same change set; `SaveChangesAsync` commits posting and message together or not at all.
+- List filters: `q` matches title, department or reference code; `status` is `All|Draft|Published|Closed|Expired`; `sort` is one of `createdDesc|createdAsc|closingAsc|closingDesc|titleAsc|titleDesc` — anything else is a `400`; `pageSize` caps at 50.
 
 ## Run
 

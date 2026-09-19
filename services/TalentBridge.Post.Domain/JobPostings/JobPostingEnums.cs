@@ -31,4 +31,7 @@ public static class JobPostingStatus
     public const string Draft = "Draft";
     public const string Published = "Published";
     public const string Closed = "Closed";
+
+    /// <summary>Derived, never stored: a Published posting whose closing date has passed.</summary>
+    public const string Expired = "Expired";
 }

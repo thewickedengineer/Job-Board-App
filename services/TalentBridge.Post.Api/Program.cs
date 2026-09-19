@@ -7,6 +7,7 @@ using Serilog.Formatting.Compact;
 using TalentBridge.Post.Api.Auth;
 using TalentBridge.Post.Api.Configuration;
 using TalentBridge.Post.Api.Errors;
+using TalentBridge.Post.Api.JobPostings;
 
 // Local `dotnet run`: pull secrets from the repo-root .env (never from appsettings).
 DotEnv.Load(Directory.GetCurrentDirectory());
@@ -86,6 +87,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false }
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
 app.MapAuthEndpoints();
+app.MapJobPostingEndpoints();
 
 await app.ApplyMigrationsIfConfiguredAsync();
 

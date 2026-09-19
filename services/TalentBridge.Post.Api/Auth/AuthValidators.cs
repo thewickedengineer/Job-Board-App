@@ -1,4 +1,5 @@
 using FluentValidation;
+using TalentBridge.Post.Api.Validation;
 
 namespace TalentBridge.Post.Api.Auth;
 
@@ -18,7 +19,7 @@ public sealed class SignupRequestValidator : AbstractValidator<SignupRequest>
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Work email is required.")
             .MaximumLength(320).WithMessage("Email must be at most 320 characters.")
-            .EmailAddress().WithMessage("Enter a valid email address.")
+            .MustBeEmailAddress().WithMessage("Enter a valid email address.")
             .Must(NotBePersonalDomain).WithMessage("Use your work email — personal mailbox domains aren't accepted.");
 
         RuleFor(x => x.Password)
@@ -37,8 +38,13 @@ public sealed class SignupRequestValidator : AbstractValidator<SignupRequest>
             .Length(2, 120).WithMessage("Company name must be at least 2 characters.");
     }
 
-    private static bool NotBePersonalDomain(string email)
+    private static bool NotBePersonalDomain(string? email)
     {
+        if (email is null)
+        {
+            return true;
+        }
+
         var at = email.LastIndexOf('@');
         return at < 0 || !PersonalDomains.Contains(email[(at + 1)..].Trim());
     }

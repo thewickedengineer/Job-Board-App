@@ -67,6 +67,12 @@ internal sealed class JobPostingConfiguration : IEntityTypeConfiguration<JobPost
 
         // The dashboard lists a manager's own postings newest-first.
         b.HasIndex(p => new { p.ManagerId, p.CreatedAt }).IsDescending(false, true);
+
+        // Internal reference codes are unique within a manager's own postings
+        // (wireframe 1.4b); NULLs are not compared so the code stays optional.
+        b.HasIndex(p => new { p.ManagerId, p.ReferenceCode })
+            .IsUnique()
+            .HasFilter("reference_code is not null");
     }
 
     private static string InList(string column, IEnumerable<string> values) =>

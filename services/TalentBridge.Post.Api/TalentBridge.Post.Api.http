@@ -81,3 +81,97 @@ Content-Type: application/json
   "email": "someone@northline.co",
   "password": "wrong"
 }
+
+### ---------------------------------------------------------------------------
+### Job postings (all require the bearer from step 2)
+### ---------------------------------------------------------------------------
+
+### 7. Create → 201 with the complete persisted record + Location
+# @name create
+POST {{host}}/api/job-postings
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "referenceCode": "REF-4471",
+  "title": "Senior Warehouse Supervisor",
+  "department": "Operations",
+  "employmentType": "FullTime",
+  "seniority": "Senior",
+  "openings": 2,
+  "workArrangement": "Hybrid",
+  "location": "Leeds, West Yorkshire",
+  "country": "United Kingdom",
+  "salaryMin": 38000,
+  "salaryMax": 46000,
+  "salaryCurrency": "GBP",
+  "payPeriod": "Annual",
+  "salaryVisible": true,
+  "description": "Northline's Leeds distribution hub handles 40,000 outbound units a week. You'll own the evening shift.",
+  "responsibilities": "Run the evening shift\nCoach team leads",
+  "skills": ["Warehouse ops", "WMS", "Team leadership"],
+  "applicationEmail": "careers@northline.co",
+  "closingDate": "2026-10-23",
+  "status": "Published"
+}
+
+### 7b. Invalid → 400, keys match the Angular form controls; salary range is keyed to salaryMax
+POST {{host}}/api/job-postings
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "title": "Ab",
+  "department": "Operations",
+  "employmentType": "Gig",
+  "seniority": "Senior",
+  "workArrangement": "Hybrid",
+  "location": "Leeds",
+  "country": "United Kingdom",
+  "salaryMin": 46000,
+  "salaryMax": 38000,
+  "salaryCurrency": "GBP",
+  "description": "Too short.",
+  "applicationUrl": "northline.co/careers",
+  "closingDate": "2020-01-01"
+}
+
+### 8. List my postings (q, status=All|Draft|Published|Closed|Expired, sort=createdDesc|createdAsc|closingAsc|closingDesc|titleAsc|titleDesc, page, pageSize≤50)
+GET {{host}}/api/job-postings?status=Published&sort=createdDesc&page=1&pageSize=20
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### 9. Get one
+GET {{host}}/api/job-postings/{{create.response.body.id}}
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### 10. Update — send the version you loaded; a stale version → 409
+PUT {{host}}/api/job-postings/{{create.response.body.id}}
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "version": {{create.response.body.version}},
+  "referenceCode": "REF-4471",
+  "title": "Warehouse Shift Lead",
+  "department": "Operations",
+  "employmentType": "FullTime",
+  "seniority": "Lead",
+  "openings": 3,
+  "workArrangement": "Hybrid",
+  "location": "Leeds, West Yorkshire",
+  "country": "United Kingdom",
+  "salaryMin": 40000,
+  "salaryMax": 48000,
+  "salaryCurrency": "GBP",
+  "payPeriod": "Annual",
+  "salaryVisible": true,
+  "description": "Northline's Leeds distribution hub handles 40,000 outbound units a week. You'll own the evening shift.",
+  "skills": ["WMS"],
+  "applicationEmail": "careers@northline.co",
+  "closingDate": "2026-10-30",
+  "status": "Published"
+}
+
+### 11. Close — irreversible; a later PUT → 409
+POST {{host}}/api/job-postings/{{create.response.body.id}}/close
+Authorization: Bearer {{login.response.body.accessToken}}
