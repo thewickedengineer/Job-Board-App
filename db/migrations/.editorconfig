@@ -1,0 +1,5 @@
+# EF Core generates these files; do not hold them to the hand-written style rules.
+[*.cs]
+generated_code = true
+csharp_style_namespace_declarations = block_scoped:silent
+dotnet_diagnostic.IDE0161.severity = none
