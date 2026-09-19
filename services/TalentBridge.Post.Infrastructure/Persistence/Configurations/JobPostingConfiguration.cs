@@ -23,6 +23,7 @@ internal sealed class JobPostingConfiguration : IEntityTypeConfiguration<JobPost
         });
 
         b.HasKey(p => p.Id);
+        b.Property(p => p.Id).ValueGeneratedNever();
 
         b.HasOne(p => p.Manager)
             .WithMany()

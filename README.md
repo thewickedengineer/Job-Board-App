@@ -9,7 +9,7 @@ The full design is in [`CLAUDE.md`](./CLAUDE.md). This README tracks what is act
 
 ## Status
 
-**Phase 2 — Database.** The `post` schema (write model) is defined as an EF Core model with an initial migration; the `search` schema (read model) is hand-written DDL. The Post API registers its `DbContext`, fails fast without a connection string, applies migrations on startup in Development, and exposes `/health` (liveness) and `/health/ready` (database reachable). No auth or business endpoints yet.
+**Phase 3 — Post API auth.** Managers can sign up, log in, refresh, log out, and read `/api/me`. Self-issued HS256 JWTs (15 min) plus rotating, hashed-at-rest refresh tokens (14 days) in an `httpOnly` `SameSite=Strict` cookie. Login and signup are rate-limited per IP. Every 4xx/5xx is RFC 9457 problem details; validation failures use camelCase keys that match the Angular form controls. No job-posting endpoints yet.
 
 ## Layout
 
@@ -41,6 +41,11 @@ docker-compose.yml                empty until Phase 9
 
 - .NET SDK 10.0
 - Node.js 22+ and npm
+- Docker (for the local Postgres and for the integration tests, which use Testcontainers)
+
+## Secrets
+
+Copy `.env.example` to `.env` and fill in `Jwt__SigningSecret` and `Projection__SharedSecret` (`openssl rand -base64 48` for each). The Post API loads `.env` from the repo root on `dotnet run` in Development; docker-compose will inject the same file. Nothing secret lives in `appsettings*.json`, and the API refuses to start if the signing secret is missing or shorter than 32 characters.
 
 ## Build and test
 
@@ -84,6 +89,25 @@ dotnet ef migrations add <Name> --project services/TalentBridge.Post.Infrastruct
 ```
 
 The Post API also applies pending migrations itself on startup when `ASPNETCORE_ENVIRONMENT=Development` and `Database:ApplyMigrationsOnStartup=true` (both set in `appsettings.Development.json`).
+
+## Authentication (Post API)
+
+| Endpoint | Auth | Result |
+|---|---|---|
+| `POST /api/auth/signup` | – | `201 { accessToken, refreshToken, manager }` + `Set-Cookie: tb_refresh` |
+| `POST /api/auth/login` | – | `200 { accessToken, refreshToken, manager }` + cookie; `401` with one generic message for any failure |
+| `POST /api/auth/refresh` | cookie or `{ refreshToken }` | `200 { accessToken, refreshToken }`; the presented token is revoked and replaced |
+| `POST /api/auth/logout` | cookie or body | `204`, cookie cleared |
+| `GET /api/me` | Bearer | `200 manager` |
+
+- Passwords: ASP.NET Core `PasswordHasher` (PBKDF2, per-user salt). Unknown emails are verified against a dummy hash so timing does not reveal whether an account exists.
+- Access token claims: `sub`, `email`, `name`, `org`, `jti`, `iat`, `exp`, `iss`, `aud`.
+- Refresh tokens are 256-bit random values; only the SHA-256 hash is stored. Rotation is a conditional `UPDATE ... WHERE revoked_at IS NULL`, so concurrent refreshes cannot both win. Presenting an already-revoked token is treated as theft and revokes every active token for that manager.
+- Browser clients keep the access token in memory and never see the refresh token: it travels only in the cookie (path `/api/auth`). The `refreshToken` body field exists for non-browser clients such as the `.http` file.
+- Rate limiting: fixed window per IP — 5 logins / 5 min and 5 signups / 10 min by default (`AuthRateLimit` section). Rejections are `429` with `Retry-After` and `retryAfterSeconds` in the body.
+- Work-email rule (from wireframe 1.1): signup rejects common personal mailbox domains (gmail, outlook, yahoo, icloud, …).
+
+`services/TalentBridge.Post.Api/TalentBridge.Post.Api.http` walks the whole cycle; `TalentBridge.Post.Tests/Integration` does the same automatically against a Testcontainers Postgres.
 
 ## Run
 

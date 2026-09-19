@@ -10,6 +10,7 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
     {
         b.ToTable("refresh_tokens");
         b.HasKey(t => t.Id);
+        b.Property(t => t.Id).ValueGeneratedNever();
 
         b.Property(t => t.TokenHash).HasMaxLength(128).IsRequired();
         b.HasIndex(t => t.TokenHash).IsUnique();

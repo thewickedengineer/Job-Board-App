@@ -16,12 +16,16 @@ public sealed class Manager
 
     private Manager() { }
 
-    public static Manager Register(string email, string passwordHash, string fullName, string organization, DateTimeOffset now) =>
+    /// <summary>
+    /// Creates an unsaved manager. The caller must <see cref="SetPasswordHash"/>
+    /// before persisting; the hasher needs the entity instance, so the hash cannot
+    /// be produced ahead of construction.
+    /// </summary>
+    public static Manager Register(string email, string fullName, string organization, DateTimeOffset now) =>
         new()
         {
             Id = Guid.CreateVersion7(),
             Email = email.Trim(),
-            PasswordHash = passwordHash,
             FullName = fullName.Trim(),
             Organization = organization.Trim(),
             EmailVerified = false,

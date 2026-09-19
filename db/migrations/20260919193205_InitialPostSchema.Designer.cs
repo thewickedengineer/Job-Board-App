@@ -12,7 +12,7 @@ using TalentBridge.Post.Infrastructure.Persistence;
 namespace TalentBridge.Post.Infrastructure.Migrations
 {
     [DbContext(typeof(PostDbContext))]
-    [Migration("20260919191254_InitialPostSchema")]
+    [Migration("20260919193205_InitialPostSchema")]
     partial class InitialPostSchema
     {
         /// <inheritdoc />
@@ -30,7 +30,6 @@ namespace TalentBridge.Post.Infrastructure.Migrations
             modelBuilder.Entity("TalentBridge.Post.Domain.JobPostings.JobPosting", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -219,7 +218,6 @@ namespace TalentBridge.Post.Infrastructure.Migrations
             modelBuilder.Entity("TalentBridge.Post.Domain.Managers.Manager", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -273,7 +271,6 @@ namespace TalentBridge.Post.Infrastructure.Migrations
             modelBuilder.Entity("TalentBridge.Post.Domain.Managers.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 

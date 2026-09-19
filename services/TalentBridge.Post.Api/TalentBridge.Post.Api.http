@@ -1,0 +1,83 @@
+### TalentBridge Post API — auth cycle
+### Run top to bottom (VS Code REST Client / Rider / VS). Needs the API on :5001
+### and a Postgres per README. Cookies are handled by the client automatically.
+
+@host = http://localhost:5001
+@email = dana.whitfield@northline.co
+@password = CorrectHorse42
+
+### Liveness / readiness
+GET {{host}}/health
+
+###
+GET {{host}}/health/ready
+
+### 1. Sign up → 201, Set-Cookie tb_refresh, body has accessToken + manager
+# @name signup
+POST {{host}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "fullName": "Dana Whitfield",
+  "organization": "Northline"
+}
+
+### 1b. Invalid sign-up → 400 ValidationProblemDetails, keys match form controls
+POST {{host}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "dana@gmail.com",
+  "password": "short",
+  "fullName": "D",
+  "organization": "N"
+}
+
+### 2. Log in → 200 (email is case-insensitive)
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 2b. Wrong password → 401 with a generic message
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "not-the-password"
+}
+
+### 3. Who am I → 200
+GET {{host}}/api/me
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### 4. Refresh (cookie) → 200, rotated pair; old token is now revoked
+# @name refresh
+POST {{host}}/api/auth/refresh
+
+### 4b. Refresh (body form, for non-browser clients) — replaying the OLD token → 401 and revokes the family
+POST {{host}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{login.response.body.refreshToken}}"
+}
+
+### 5. Log out → 204, cookie cleared
+POST {{host}}/api/auth/logout
+
+### 6. Rate limit: send this 6+ times within 5 minutes → 429 + Retry-After
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "someone@northline.co",
+  "password": "wrong"
+}

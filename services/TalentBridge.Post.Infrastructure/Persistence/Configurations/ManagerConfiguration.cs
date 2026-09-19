@@ -10,6 +10,7 @@ internal sealed class ManagerConfiguration : IEntityTypeConfiguration<Manager>
     {
         b.ToTable("managers");
         b.HasKey(m => m.Id);
+        b.Property(m => m.Id).ValueGeneratedNever(); // domain generates v7 GUIDs
 
         b.Property(m => m.Email).HasColumnType("citext").HasMaxLength(320).IsRequired();
         b.HasIndex(m => m.Email).IsUnique();
