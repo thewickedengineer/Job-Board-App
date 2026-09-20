@@ -1,0 +1,270 @@
+<form [formGroup]="form" (ngSubmit)="submit(mode() === 'edit' ? 'save' : 'publish')" novalidate class="posting-form" [attr.aria-busy]="submitting()">
+  <app-error-summary #summary [entries]="errors()" [title]="bannerTitle()" />
+
+  <p class="muted small">Fields marked <i class="req" aria-hidden="true">*</i><span class="visually-hidden">asterisk</span> are required.</p>
+
+  <!-- While submitting every control is inert (native fieldset disabled) without
+       touching the reactive form's state, so server errors survive the round trip. -->
+  <fieldset class="form-body" [disabled]="submitting()">
+
+  <!-- Role -->
+  <fieldset class="section">
+    <legend class="section-title"><h2>Role</h2></legend>
+    <div class="stack">
+      <div class="field">
+        <label class="label" for="title">Job title <i class="req" aria-hidden="true">*</i></label>
+        <input id="title" class="input" formControlName="title" maxlength="120" [attr.aria-invalid]="showError('title') ? 'true' : null" [attr.aria-describedby]="describedBy('title', true)" />
+        <p id="title-hint" class="hint">Shown as the result-card headline on the job board.</p>
+        @if (showError('title')) { <p id="title-error" class="field-error">{{ errorFor('title') }}</p> }
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="label" for="department">Department <i class="req" aria-hidden="true">*</i></label>
+          <input id="department" class="input" formControlName="department" maxlength="80" list="department-suggestions" [attr.aria-invalid]="showError('department') ? 'true' : null" [attr.aria-describedby]="describedBy('department', true)" />
+          <datalist id="department-suggestions">
+            <option value="Operations"></option><option value="Engineering"></option><option value="People"></option><option value="Finance"></option><option value="Data & Insight"></option><option value="Customer Service"></option>
+          </datalist>
+          <p id="department-hint" class="hint">Pick an existing department or type a new one.</p>
+          @if (showError('department')) { <p id="department-error" class="field-error">{{ errorFor('department') }}</p> }
+        </div>
+
+        <div class="field">
+          <label class="label" for="seniority">Seniority <i class="req" aria-hidden="true">*</i></label>
+          <select id="seniority" class="select" formControlName="seniority" [attr.aria-invalid]="showError('seniority') ? 'true' : null">
+            @for (s of seniorities; track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+          @if (showError('seniority')) { <p id="seniority-error" class="field-error">{{ errorFor('seniority') }}</p> }
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <fieldset class="field">
+          <legend class="label">Employment type <i class="req" aria-hidden="true">*</i></legend>
+          <div class="segmented" role="radiogroup" aria-labelledby="employmentType-label">
+            <span id="employmentType-label" class="visually-hidden">Employment type</span>
+            @for (t of employmentTypes; track t) {
+              <label class="segment">
+                <input type="radio" formControlName="employmentType" [value]="t" [id]="$first ? 'employmentType' : 'employmentType-' + t" />
+                {{ labels.employmentType[t] }}
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        <div class="field openings">
+          <label class="label" for="openings">Number of openings <i class="req" aria-hidden="true">*</i></label>
+          <input id="openings" class="input" type="number" inputmode="numeric" min="1" max="999" step="1" formControlName="openings" [attr.aria-invalid]="showError('openings') ? 'true' : null" [attr.aria-describedby]="describedBy('openings')" />
+          @if (showError('openings')) { <p id="openings-error" class="field-error">{{ errorFor('openings') }}</p> }
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Location -->
+  <fieldset class="section">
+    <legend class="section-title"><h2>Location</h2></legend>
+    <div class="stack">
+      <fieldset class="field">
+        <legend class="label">Work arrangement <i class="req" aria-hidden="true">*</i></legend>
+        <div class="segmented" role="radiogroup" aria-label="Work arrangement">
+          @for (w of workArrangements; track w) {
+            <label class="segment">
+              <input type="radio" formControlName="workArrangement" [value]="w" [id]="$first ? 'workArrangement' : 'workArrangement-' + w" />
+              {{ labels.workArrangement[w] }}
+            </label>
+          }
+        </div>
+      </fieldset>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="label" for="location">{{ isRemote() ? 'Region (optional)' : 'Location' }} @if (!isRemote()) { <i class="req" aria-hidden="true">*</i> }</label>
+          <input id="location" class="input" formControlName="location" maxlength="120" placeholder="Leeds, West Yorkshire" [attr.aria-invalid]="showError('location') ? 'true' : null" [attr.aria-describedby]="describedBy('location', true)" />
+          <p id="location-hint" class="hint">{{ isRemote() ? 'For remote roles the country is shown when this is empty.' : 'City and region as candidates would search for them.' }}</p>
+          @if (showError('location')) { <p id="location-error" class="field-error">{{ errorFor('location') }}</p> }
+        </div>
+
+        <div class="field">
+          <label class="label" for="country">Country <i class="req" aria-hidden="true">*</i></label>
+          <input id="country" class="input" formControlName="country" maxlength="80" list="country-suggestions" [attr.aria-invalid]="showError('country') ? 'true' : null" [attr.aria-describedby]="describedBy('country')" />
+          <datalist id="country-suggestions">
+            <option value="Canada"></option><option value="United Kingdom"></option><option value="United States"></option><option value="Ireland"></option><option value="Australia"></option><option value="Germany"></option><option value="India"></option>
+          </datalist>
+          @if (showError('country')) { <p id="country-error" class="field-error">{{ errorFor('country') }}</p> }
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Compensation -->
+  <fieldset class="section">
+    <legend class="section-title"><h2>Compensation</h2></legend>
+    <div class="stack">
+      <fieldset class="salary-pair" [attr.aria-describedby]="showError('salaryMax') ? 'salaryMax-error' : null">
+        <legend class="visually-hidden">Salary range</legend>
+        <div class="grid-3">
+          <div class="field">
+            <label class="label" for="salaryMin">Salary min <i class="req" aria-hidden="true">*</i></label>
+            <input id="salaryMin" class="input" type="number" inputmode="decimal" min="0" step="500" formControlName="salaryMin" [attr.aria-invalid]="showError('salaryMin') ? 'true' : null" [attr.aria-describedby]="describedBy('salaryMin')" />
+            @if (showError('salaryMin')) { <p id="salaryMin-error" class="field-error">{{ errorFor('salaryMin') }}</p> }
+          </div>
+          <div class="field">
+            <label class="label" for="salaryMax">Salary max <i class="req" aria-hidden="true">*</i></label>
+            <input id="salaryMax" class="input" type="number" inputmode="decimal" min="0" step="500" formControlName="salaryMax" [attr.aria-invalid]="showError('salaryMax') ? 'true' : null" [attr.aria-describedby]="describedBy('salaryMax')" />
+            @if (showError('salaryMax')) { <p id="salaryMax-error" class="field-error">{{ errorFor('salaryMax') }}</p> }
+          </div>
+          <div class="field">
+            <label class="label" for="salaryCurrency">Currency <i class="req" aria-hidden="true">*</i></label>
+            <select id="salaryCurrency" class="select" formControlName="salaryCurrency" [attr.aria-invalid]="showError('salaryCurrency') ? 'true' : null">
+              @for (c of currencies; track c) { <option [value]="c">{{ labels.currency[c] }}</option> }
+            </select>
+            @if (showError('salaryCurrency')) { <p id="salaryCurrency-error" class="field-error">{{ errorFor('salaryCurrency') }}</p> }
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="grid-2">
+        <fieldset class="field">
+          <legend class="label">Pay period</legend>
+          <div class="segmented" role="radiogroup" aria-label="Pay period">
+            @for (p of payPeriods; track p) {
+              <label class="segment">
+                <input type="radio" formControlName="payPeriod" [value]="p" [id]="$first ? 'payPeriod' : 'payPeriod-' + p" />
+                {{ p }}
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <span class="label" id="salaryVisible-label">Visibility</span>
+          <label class="row small toggle">
+            <input id="salaryVisible" type="checkbox" formControlName="salaryVisible" aria-describedby="salaryVisible-hint" />
+            <span>Show salary to candidates</span>
+          </label>
+          <p id="salaryVisible-hint" class="hint">{{ form.controls.salaryVisible.value ? 'On — the range will be public.' : 'Off — candidates see “salary not disclosed”.' }}</p>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Description -->
+  <fieldset class="section">
+    <legend class="section-title"><h2>Description</h2></legend>
+    <div class="stack">
+      <div class="field">
+        <div class="row-between">
+          <label class="label" for="description">Job description <i class="req" aria-hidden="true">*</i></label>
+          <span class="hint" aria-hidden="true">{{ descriptionLength().toLocaleString() }} / {{ descriptionMax.toLocaleString() }}</span>
+        </div>
+        <textarea id="description" class="textarea" rows="7" formControlName="description" [attr.maxlength]="descriptionMax" [attr.aria-invalid]="showError('description') ? 'true' : null" [attr.aria-describedby]="describedBy('description', true)"></textarea>
+        <p id="description-hint" class="hint">Minimum 50 characters. Plain text; paragraphs are kept.</p>
+        <p class="visually-hidden" aria-live="polite">{{ counterAnnouncement() }}</p>
+        @if (showError('description')) { <p id="description-error" class="field-error">{{ errorFor('description') }}</p> }
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="label" for="responsibilities">Responsibilities</label>
+          <textarea id="responsibilities" class="textarea" rows="5" formControlName="responsibilities" [attr.aria-invalid]="showError('responsibilities') ? 'true' : null" aria-describedby="responsibilities-hint"></textarea>
+          <p id="responsibilities-hint" class="hint">One per line — rendered as a bulleted list on the job board.</p>
+          @if (showError('responsibilities')) { <p id="responsibilities-error" class="field-error">{{ errorFor('responsibilities') }}</p> }
+        </div>
+        <div class="field">
+          <label class="label" for="requirements">Requirements</label>
+          <textarea id="requirements" class="textarea" rows="5" formControlName="requirements" [attr.aria-invalid]="showError('requirements') ? 'true' : null" aria-describedby="requirements-hint"></textarea>
+          <p id="requirements-hint" class="hint">One per line.</p>
+          @if (showError('requirements')) { <p id="requirements-error" class="field-error">{{ errorFor('requirements') }}</p> }
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="skills">Skills / tags</label>
+        <app-chip-input inputId="skills" formControlName="skills" [max]="maxSkills" [describedBy]="describedBy('skills', true)" [invalid]="showError('skills')" />
+        <p id="skills-hint" class="hint">Type and press Enter or comma. Max {{ maxSkills }} tags; duplicates and empty entries are dropped.</p>
+        @if (showError('skills')) { <p id="skills-error" class="field-error">{{ errorFor('skills') }}</p> }
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Timing & contact -->
+  <fieldset class="section">
+    <legend class="section-title"><h2>Timing &amp; contact</h2></legend>
+    <div class="stack">
+      <div class="grid-2">
+        <div class="field">
+          <label class="label" for="closingDate">Closing date <i class="req" aria-hidden="true">*</i></label>
+          <app-date-picker inputId="closingDate" formControlName="closingDate" [min]="minClosingDate()" [describedBy]="describedBy('closingDate', true)" [invalid]="showError('closingDate')" />
+          <p id="closingDate-hint" class="hint">Must be after today (UTC). Past dates are disabled in the picker.</p>
+          @if (showError('closingDate')) { <p id="closingDate-error" class="field-error">{{ errorFor('closingDate') }}</p> }
+        </div>
+        <div class="field">
+          <label class="label" for="referenceCode">Internal reference code</label>
+          <input id="referenceCode" class="input" formControlName="referenceCode" maxlength="40" placeholder="REF-4471" [attr.aria-invalid]="showError('referenceCode') ? 'true' : null" [attr.aria-describedby]="describedBy('referenceCode', true)" />
+          <p id="referenceCode-hint" class="hint">Never shown publicly. Must be unique across your postings.</p>
+          @if (showError('referenceCode')) { <p id="referenceCode-error" class="field-error">{{ errorFor('referenceCode') }}</p> }
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="label" for="applicationEmail">Application email</label>
+          <input id="applicationEmail" class="input" type="email" formControlName="applicationEmail" placeholder="careers@northline.co" [attr.aria-invalid]="showError('applicationEmail') ? 'true' : null" [attr.aria-describedby]="describedBy('applicationEmail', true)" />
+          <p id="applicationEmail-hint" class="hint">Candidates' Apply button opens a mail to this address.</p>
+          @if (showError('applicationEmail')) { <p id="applicationEmail-error" class="field-error">{{ errorFor('applicationEmail') }}</p> }
+        </div>
+        <div class="field">
+          <label class="label" for="applicationUrl">Application URL</label>
+          <input id="applicationUrl" class="input" type="url" formControlName="applicationUrl" placeholder="https://…" [attr.aria-invalid]="showError('applicationUrl') ? 'true' : null" [attr.aria-describedby]="describedBy('applicationUrl', true)" />
+          <p id="applicationUrl-hint" class="hint">Or an https:// link; takes precedence over the email if both are set.</p>
+          @if (showError('applicationUrl')) { <p id="applicationUrl-error" class="field-error">{{ errorFor('applicationUrl') }}</p> }
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  </fieldset>
+
+  <!-- Sticky footer -->
+  <div class="form-footer">
+    <div class="row-between">
+      <p class="small muted" aria-live="polite">
+        @if (submitting()) {
+          {{ mode() === 'edit' ? 'Saving your changes…' : 'Publishing your posting…' }}
+        } @else if (dirty()) {
+          <span class="dot" aria-hidden="true">●</span> Unsaved changes
+        } @else {
+          No unsaved changes
+        }
+      </p>
+      <div class="row">
+        @if (mode() === 'create') {
+          <button type="button" class="btn" (click)="cancelled.emit()" [disabled]="submitting()">Cancel</button>
+          <button type="button" class="btn" (click)="submit('draft')" [disabled]="submitting()">Save as draft</button>
+          <button type="submit" class="btn btn-primary" [disabled]="submitting()" [attr.aria-busy]="submitting()">
+            @if (submitting()) { <span class="spinner" aria-hidden="true"></span> }
+            Publish
+          </button>
+        } @else {
+          <button type="button" class="btn" (click)="cancelled.emit()" [disabled]="submitting() || !dirty()">Discard changes</button>
+          @if (isDraft()) {
+            <button type="button" class="btn" (click)="submit('save')" [disabled]="submitting() || !dirty()">Save draft</button>
+            <button type="button" class="btn btn-primary" (click)="submit('publish')" [disabled]="submitting() || isClosed()" [attr.aria-busy]="submitting()">
+              @if (submitting()) { <span class="spinner" aria-hidden="true"></span> }
+              Publish
+            </button>
+          } @else {
+            <button type="submit" class="btn btn-primary" [disabled]="submitting() || !dirty() || isClosed()" [attr.aria-busy]="submitting()">
+              @if (submitting()) { <span class="spinner" aria-hidden="true"></span> }
+              Save changes
+            </button>
+          }
+        }
+      </div>
+    </div>
+    @if (mode() === 'edit' && !isDraft() && !isClosed()) {
+      <p class="hint">Saving republishes the posting; changes reach the public board within a few minutes.</p>
+    }
+  </div>
+</form>

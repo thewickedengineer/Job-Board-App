@@ -1,0 +1,61 @@
+// Design tokens — the one source of truth for both apps. This file is
+// duplicated verbatim into search-web (no shared build library, by design).
+:root {
+  // Palette (from the wireframes)
+  --color-accent: #2f6fd0;
+  --color-accent-strong: #1d4f9c;
+  --color-accent-ring: rgba(47, 111, 208, 0.28);
+  --color-ink: #1c1c1c;
+  --color-mid: #6b6b6b;
+  --color-muted: #8c8c8c;
+  --color-line: #b9b9b9;
+  --color-line-soft: #dcdad6;
+  --color-danger: #8a2f2f;
+  --color-danger-bg: #fdf7f7;
+  --color-danger-line: #c09292;
+  --color-warn: #8a6a2f;
+  --color-warn-bg: #fbf7ef;
+  --color-ok: #2f6b3a;
+  --color-ok-bg: #eef7f0;
+  --color-bg: #f4f3f1;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f5f3;
+  --color-disabled-bg: #f0f0f0;
+  --color-disabled-ink: #9a9a9a;
+  --color-skeleton: #e4e4e4;
+
+  // Type
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  // Spacing (8px scale)
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  // Shape
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-pill: 999px;
+  --control-height: 36px;
+  --focus-ring: 0 0 0 3px var(--color-accent-ring);
+  --shadow-sheet: 0 -2px 12px rgba(0, 0, 0, 0.08);
+  --shadow-pop: 0 6px 24px rgba(0, 0, 0, 0.14);
+
+  // App-specific layout: Post is dense and narrow
+  --content-max: 1080px;
+  --gutter: 16px;
+}

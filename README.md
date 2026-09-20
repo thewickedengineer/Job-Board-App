@@ -9,7 +9,7 @@ The full design is in [`CLAUDE.md`](./CLAUDE.md). This README tracks what is act
 
 ## Status
 
-**Phase 6 — Search API.** The public read side is complete: `GET /api/jobs` (keyword search through the tsvector, multi-select facets, salary range, recency, five sorts, paging), `GET /api/jobs/{slug}` (full posting + similar roles, ETag/304) and `GET /api/facets` (counts with each dimension's own filter excluded). Everything is Dapper against `search.job_listings`, output-cached (60 s lists / 300 s details, evicted by tag on projection), compressed, and sent with `Cache-Control: public`. `db/seed/search-listings.sql` loads ~1,000 varied rows; every query is index-backed and sub-millisecond. Both APIs are done; the Angular apps and Docker remain.
+**Phase 7 — post-web.** The hiring-manager portal is complete against wireframes 1.1–1.6: sign up, log in (generic 401, 429 lockout countdown), dashboard (URL-synced search/status/sort/paging, skeleton, empty vs. filtered-empty, error + retry), the job-posting form (typed reactive form, §6 client rules, group-level salary validator surfaced on `salaryMax`, server errors mapped mechanically onto controls with a focused error-summary banner), confirmation (echoes the API record), and edit (version conflicts → reload or overwrite, close with typed confirmation). Both APIs are done; search-web and Docker remain.
 
 ## Layout
 
@@ -172,6 +172,23 @@ docker exec -i talentbridge-pg psql -U talentbridge -d talentbridge < db/seed/se
 ```
 
 Loads ~1,000 deterministic listings (plus a few closed and expired) into the read model only — they have no write-side counterpart and exist so the board has something to show and query plans can be judged at a realistic size.
+
+## post-web (hiring manager portal)
+
+`apps/post-web` — Angular 22, standalone, zoneless, signals, lazy routes, `OnPush` everywhere, strict templates, SCSS with the design tokens in `src/styles/_tokens.scss` (duplicated into search-web by design).
+
+| Route | Screen | Wireframe |
+|---|---|---|
+| `/signup`, `/login` | account creation, sign-in with 401 banner and 429 countdown | 1.1, 1.2 |
+| `/` | dashboard: search (300 ms debounce), status, sort and page in the URL; skeleton after 200 ms; empty vs. filtered-empty; error panel with retry | 1.3, 1.3b |
+| `/postings/new` | the posting form; Cancel / Save as draft / Publish in a sticky footer | 1.4, 1.4b |
+| `/postings/:id/confirmation` | the saved record exactly as the API returned it, with the propagation note | 1.5 |
+| `/postings/:id` | edit; save with the loaded `version` (409 → reload or overwrite); Close posting with a typed `CLOSE` confirmation | 1.6 |
+
+- **Session**: the access token lives in a signal in `AuthService`, never in storage; the refresh token is the `httpOnly` cookie the API sets. On load the app calls `/api/auth/refresh` (`provideAppInitializer`) so a reload on a protected page stays there. A functional interceptor attaches the bearer and, on a 401, refreshes once and retries; a functional guard redirects to `/login?returnUrl=…`.
+- **Server errors** (`core/problem-details.ts`): `applyServerErrors(form, problem)` walks the `errors` keys, calls `control.setErrors({ server })` on the control of the same name, clears it on that control's next change, and returns unmatched keys so the banner still lists them. The banner is `role="alert"`, focused after the response, and each line focuses its input.
+- **Custom controls** (hand-built, `shared/`): keyboard-operable date picker (arrows, PageUp/PageDown, Home/End, Esc; past days disabled and skipped), chip input (Enter/comma commit, Backspace removes), segmented radio groups, focus-trapped `alertdialog`, toasts (5 s, paused on hover; errors persist).
+- **Tests** (`npx ng test`): the form maps a `ValidationProblemDetails` payload onto controls and renders the summary; the date picker's keyboard contract.
 
 ## Run
 

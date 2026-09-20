@@ -1,0 +1,133 @@
+<div class="page-head row-between">
+  <div>
+    <h1>Your postings</h1>
+    @if (postings.hasValue()) {
+      <p class="muted small">{{ total() }} {{ total() === 1 ? 'posting' : 'postings' }} · {{ publishedCount() }} published on this page</p>
+    }
+  </div>
+  <a routerLink="/postings/new" class="btn btn-primary">+ Post a job</a>
+</div>
+
+<div class="toolbar row" role="search">
+  <label class="visually-hidden" for="search">Search title, department or reference</label>
+  <input
+    #searchBox
+    id="search"
+    class="input search"
+    type="search"
+    placeholder="Search title, department, ref…"
+    [value]="searchValue()"
+    (input)="onSearch(searchBox.value)"
+    autocomplete="off"
+  />
+  <label class="visually-hidden" for="status">Status</label>
+  <select id="status" class="select" (change)="setStatus(statusSelect.value)" #statusSelect>
+    @for (s of statuses; track s) {
+      <option [value]="s" [selected]="s === query().status">Status: {{ s }}</option>
+    }
+  </select>
+  <label class="visually-hidden" for="sort">Sort</label>
+  <select id="sort" class="select" (change)="setSort(sortSelect.value)" #sortSelect>
+    @for (s of sorts; track s) {
+      <option [value]="s" [selected]="s === query().sort">Sort: {{ sortLabels[s] }}</option>
+    }
+  </select>
+</div>
+
+<p class="visually-hidden" aria-live="polite">{{ announcement() }}</p>
+
+@if (postings.error()) {
+  <div class="banner banner-error" role="alert">
+    <p class="banner-title">We couldn't load your postings.</p>
+    <p class="small">Check your connection and try again. Your search and filters are kept.</p>
+    <p><button type="button" class="btn btn-sm" (click)="retry()">Retry</button></p>
+  </div>
+} @else if (postings.isLoading() && showSkeleton()) {
+  <div class="table-region card" aria-busy="true">
+    <table class="table" aria-hidden="true">
+      <thead>
+        <tr><th>Title</th><th>Department</th><th>Location</th><th>Status</th><th>Closes</th><th>Created</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (row of skeletonRows; track row) {
+          <tr class="skeleton-row">
+            <td><span class="skeleton w-60"></span><span class="skeleton w-30"></span></td>
+            <td><span class="skeleton w-70"></span></td>
+            <td><span class="skeleton w-80"></span></td>
+            <td><span class="skeleton w-50"></span></td>
+            <td><span class="skeleton w-60"></span></td>
+            <td><span class="skeleton w-60"></span></td>
+            <td><span class="skeleton w-40"></span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else if (postings.hasValue() && items().length === 0 && !hasFilters()) {
+  <section class="empty card" aria-labelledby="empty-title">
+    <h2 id="empty-title">No postings yet</h2>
+    <p class="muted">Create your first job posting — it takes about three minutes, and you can save it as a draft at any point.</p>
+    <p><a routerLink="/postings/new" class="btn btn-primary">+ Post a job</a></p>
+  </section>
+} @else if (postings.hasValue() && items().length === 0) {
+  <section class="empty card" aria-labelledby="filtered-empty-title">
+    <div class="row chips">
+      @if (query().q) { <span class="chip">“{{ query().q }}”</span> }
+      @if (query().status !== 'All') { <span class="chip">Status: {{ query().status }}</span> }
+    </div>
+    <h2 id="filtered-empty-title">No postings match</h2>
+    <p class="muted">
+      @if (query().status !== 'All' && query().q) { Nothing {{ query().status.toLowerCase() }} matches “{{ query().q }}”. }
+      @else if (query().q) { Nothing matches “{{ query().q }}”. }
+      @else { Nothing is {{ query().status.toLowerCase() }}. }
+    </p>
+    <p><button type="button" class="btn" (click)="clearFilters(searchBox)">Clear filters</button></p>
+  </section>
+} @else if (postings.hasValue()) {
+  <div class="table-region card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col" [attr.aria-sort]="query().sort.startsWith('title') ? (query().sort === 'titleAsc' ? 'ascending' : 'descending') : null">Title</th>
+          <th scope="col">Department</th>
+          <th scope="col">Location</th>
+          <th scope="col">Status</th>
+          <th scope="col" [attr.aria-sort]="query().sort.startsWith('closing') ? (query().sort === 'closingAsc' ? 'ascending' : 'descending') : null">Closes</th>
+          <th scope="col" [attr.aria-sort]="query().sort.startsWith('created') ? (query().sort === 'createdAsc' ? 'ascending' : 'descending') : null">Created</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of items(); track p.id) {
+          <tr>
+            <td>
+              <a [routerLink]="['/postings', p.id]" class="title-link">{{ p.title }}</a>
+              @if (p.referenceCode) { <div class="muted mono">{{ p.referenceCode }}</div> }
+            </td>
+            <td>{{ p.department }}</td>
+            <td>{{ p.location }} · {{ arrangementLabels[p.workArrangement] }}</td>
+            <td>
+              <app-status-chip [status]="p.status" />
+              @if (closesSoon(p)) { <span class="status status-warn closing-soon">Closes in {{ daysUntil(p.closingDate) }} days</span> }
+            </td>
+            <td>{{ p.closingDate | date: 'dd MMM yyyy' }}</td>
+            <td>{{ p.createdAt | date: 'dd MMM yyyy' }}</td>
+            <td class="actions">
+              <a [routerLink]="['/postings', p.id]" class="btn btn-sm">{{ p.status === 'Closed' || p.status === 'Expired' ? 'View' : 'Edit' }}</a>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (totalPages() > 1) {
+    <nav class="pagination row" aria-label="Pagination">
+      <button type="button" class="btn btn-sm" [disabled]="query().page <= 1" (click)="goTo(query().page - 1)" aria-label="Previous page">←</button>
+      @for (n of pages(); track n) {
+        <button type="button" class="btn btn-sm" [class.btn-primary]="n === query().page" [attr.aria-current]="n === query().page ? 'page' : null" (click)="goTo(n)">{{ n }}</button>
+      }
+      <button type="button" class="btn btn-sm" [disabled]="query().page >= totalPages()" (click)="goTo(query().page + 1)" aria-label="Next page">→</button>
+    </nav>
+  }
+}

@@ -97,6 +97,18 @@ A single `NpgsqlDataSource` registered once and injected everywhere: one pool, o
 
 Every 4xx/5xx from either API is RFC 9457 problem details with a `traceId`. Validation failures are `ValidationProblemDetails` whose `errors` keys are camelCase and equal to the Angular form control names, so the client maps them mechanically. Cross-field salary failures are keyed to `salaryMax`; skill failures to `skills` (one chip control), not to an index. A global `IExceptionHandler` guarantees no raw exception text leaks.
 
-## 8. Frontends *(pending — phases 7 and 8)*
+## 8. Frontends
+
+Two Angular 22 applications that share tokens, primitives and conventions but no code — `src/styles/_tokens.scss` is copied, not imported, so each app deploys alone. Both are standalone, zoneless, signal-driven and `OnPush` throughout; server data flows through `httpResource` where the read pattern fits (the dashboard list keyed on the URL's query params) and typed services with `firstValueFrom` for commands.
+
+### 8.1 post-web (built)
+
+- **Session model.** The access token is a signal; the refresh token is the API's `httpOnly; SameSite=Strict` cookie and the app never sees it. `provideAppInitializer` exchanges the cookie for a token before the first route resolves, so a reload on a protected page stays put and the guard can be synchronous. The interceptor refreshes once on 401 and retries; concurrent 401s share one in-flight refresh.
+- **The §6 contract, client side.** Control names equal the API's validation keys and every input's `id` equals its control name. `applyServerErrors` is therefore a loop, not a mapping table: `form.get(key).setErrors({ server })`, cleared on that control's next value change. The cross-field salary rule is a *group* validator whose error the template renders under `salaryMax` — the same key the server uses — so both sources surface in the same place.
+- **Zoneless discipline.** Anything that must focus an element a signal change is about to render (the error banner, the calendar grid) waits for `afterNextRender`; a microtask runs too early. Submitting is expressed with a native `<fieldset disabled>` rather than `FormGroup.disable()`, because re-enabling a group re-runs validators and would erase the server errors the response just delivered.
+- **URL as state.** The dashboard's search, status, sort and page live only in the query string; the component derives its query from `ActivatedRoute.queryParamMap` and the list resource re-fetches when it changes. Shareable, refresh-safe, back-button-safe for free.
+- **Concurrency for editors.** `PUT` carries the `version` loaded with the record; a 409 is a banner with two honest choices — reload (drop my edits) or overwrite (re-fetch the version, resubmit my edits) — never a silent retry.
+
+### 8.2 search-web *(pending — phase 8)*
 
 ## 9. Deployment *(pending — phase 9)*

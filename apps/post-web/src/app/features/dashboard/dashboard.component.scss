@@ -1,0 +1,14 @@
+.page-head { margin-bottom: var(--space-4); align-items: flex-end; }
+.toolbar { margin-bottom: var(--space-3); }
+.search { flex: 1 1 260px; max-width: 420px; }
+.select { width: auto; }
+.table-region { padding: 0; overflow-x: auto; }
+.title-link { font-weight: 650; color: var(--color-ink); }
+.actions { text-align: right; white-space: nowrap; }
+.closing-soon { margin-left: 6px; }
+.skeleton-row td { padding-top: 14px; padding-bottom: 14px; }
+.skeleton-row .skeleton + .skeleton { margin-top: 6px; }
+.w-30 { width: 30%; } .w-40 { width: 40%; } .w-50 { width: 50%; } .w-60 { width: 60%; } .w-70 { width: 70%; } .w-80 { width: 80%; }
+.empty { text-align: center; padding: var(--space-7) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); align-items: center; }
+.chips { justify-content: center; }
+.pagination { margin-top: var(--space-3); justify-content: center; }

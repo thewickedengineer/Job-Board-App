@@ -1,0 +1,21 @@
+.posting-form { display: flex; flex-direction: column; gap: var(--space-5); }
+.form-body { display: contents; }
+.form-body:disabled .input, .form-body:disabled .textarea, .form-body:disabled .select { background: var(--color-disabled-bg); }
+app-error-summary:empty { display: none; }
+.section { border: 1px solid var(--color-line-soft); border-radius: var(--radius-md); background: var(--color-surface); padding: var(--space-4); }
+.section-title { padding: 0 var(--space-1); }
+.section-title h2 { font-size: var(--text-base); text-transform: uppercase; letter-spacing: 0.08em; color: #4a4a4a; }
+.section > .stack { margin-top: var(--space-3); }
+.openings .input { max-width: 140px; }
+.toggle { min-height: var(--control-height); }
+.dot { color: var(--color-warn); }
+.form-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-sheet);
+  z-index: 5;
+}
