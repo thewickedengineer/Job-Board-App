@@ -9,7 +9,7 @@ The full design is in [`CLAUDE.md`](./CLAUDE.md). This README tracks what is act
 
 ## Status
 
-**Phase 4 — Post API job postings.** Managers can create, list, read, update and close their own postings. Validation is the §6 matrix in FluentValidation, returned as RFC 9457 `ValidationProblemDetails` with camelCase keys that match the Angular form controls. Every publish/update/close writes an `outbox_messages` row in the same transaction as the posting; the publisher that delivers those rows is Phase 5. Auth from Phase 3 is unchanged.
+**Phase 5 — Outbox → projection.** A posting published, edited or closed in the Post API reaches `search.job_listings` within a couple of seconds: the outbox row written in the same transaction is picked up by a background publisher (2 s poll, `FOR UPDATE SKIP LOCKED`), pushed through a Polly pipeline to the Search API's shared-secret projection endpoint, and upserted by Dapper with a version guard. Failed pushes are retried, an outage trips a circuit breaker, exhausted rows are parked and reported on `/health/ready`. The Search API has no public read endpoints yet (Phase 6).
 
 ## Layout
 
@@ -127,11 +127,36 @@ The Post API also applies pending migrations itself on startup when `ASPNETCORE_
 - **Outbox**: `Enqueue()` in `JobPostingEndpoints.cs` adds a `job-posting.changed` row (full `JobProjectionMessage` snapshot) to the same change set; `SaveChangesAsync` commits posting and message together or not at all.
 - List filters: `q` matches title, department or reference code; `status` is `All|Draft|Published|Closed|Expired`; `sort` is one of `createdDesc|createdAsc|closingAsc|closingDesc|titleAsc|titleDesc` — anything else is a `400`; `pageSize` caps at 50.
 
+## Outbox and projection (write side → read side)
+
+```
+Post API                                   Search API
+────────                                   ──────────
+SaveChangesAsync ─┬─ job_postings row
+                  └─ outbox_messages row   (same transaction)
+OutboxPublisher   every 2 s: SELECT … FOR UPDATE SKIP LOCKED LIMIT 20
+      │           POST /internal/projections/job  ──►  X-Projection-Secret check
+      │           (Polly: 3 retries w/ backoff, 5 s attempt,   │
+      │            30 s total, circuit breaker)               ▼
+      │                                          INSERT … ON CONFLICT (id) DO UPDATE
+      │                                          … WHERE job_listings.version < excluded.version
+      ◄── 202 { applied: true|false } ──────────  (stale / duplicate ⇒ no-op, still 202)
+processed_at = now()
+```
+
+- **Never lost, never blocking.** The user's request only writes rows. Delivery happens later; a Search API outage does not fail a publish.
+- **At-least-once delivery, idempotent apply.** A message may be sent twice (crash after push, before `processed_at`); the version guard makes the second apply a no-op. Out-of-order delivery is also harmless: an older version never overwrites a newer row.
+- **Failure accounting.** A genuine failure (non-2xx after retries, timeout, connection refused) increments `attempts` and records `last_error`. While the circuit breaker is open nothing is sent, so those polls do *not* count — a long outage cannot exhaust a message. After `Outbox:MaxAttempts` (default 10) a row is **parked**: it stays in the table, is skipped by the poller, and `/health/ready` reports `Unhealthy` with a `parked` count. Reset `attempts` to 0 to requeue it. Rows unprocessed for longer than `Outbox:BackedUpAfterMinutes` make `/health/ready` `Degraded`.
+- **4xx from the Search API is not retried** (a poison message would never succeed); it parks quickly and shows on health.
+- **Scale-out safe.** `SKIP LOCKED` lets several Post API instances run the loop without double-claiming.
+- **Shared secret.** `Projection__SharedSecret` (≥ 32 chars, from `.env`) is sent as `X-Projection-Secret` and compared in constant time; the endpoint is excluded from OpenAPI and has no other auth. The Search API also applies `db/search-schema.sql` on startup in Development so a fresh database is ready without compose.
+- The Search API keeps its **own copy** of `JobProjectionMessage`; the services share a wire contract, not an assembly.
+
 ## Run
 
 ```sh
 dotnet run --project services/TalentBridge.Post.Api     # http://localhost:5001/health  and  /health/ready
-dotnet run --project services/TalentBridge.Search.Api   # http://localhost:5002/health
+dotnet run --project services/TalentBridge.Search.Api   # http://localhost:5002/health  and  /health/ready
 
 cd apps/post-web   && npx ng serve                       # http://localhost:4200
 cd apps/search-web && npx ng serve                       # http://localhost:4201

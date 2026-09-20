@@ -18,6 +18,10 @@ public sealed class PostApiFactory(string connectionString, IDictionary<string, 
         builder.UseSetting("Database:ApplyMigrationsOnStartup", "true");
         builder.UseSetting("Jwt:SigningSecret", TestSigningSecret);
         builder.UseSetting("Cors:AllowedOrigins:0", "http://localhost:4200");
+        builder.UseSetting("Projection:SearchApiBaseUrl", "http://search-api.test");
+        builder.UseSetting("Projection:SharedSecret", "test-only-projection-secret-at-least-32-bytes");
+        // The background loop stays off; OutboxPublisherTests drive batches by hand.
+        builder.UseSetting("Outbox:Enabled", "false");
         // Generous defaults so ordinary tests never trip the limiter; the
         // rate-limit test lowers them explicitly.
         builder.UseSetting("AuthRateLimit:LoginPermitLimit", "1000");

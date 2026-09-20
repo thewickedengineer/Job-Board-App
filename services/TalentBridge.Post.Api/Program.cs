@@ -8,6 +8,7 @@ using TalentBridge.Post.Api.Auth;
 using TalentBridge.Post.Api.Configuration;
 using TalentBridge.Post.Api.Errors;
 using TalentBridge.Post.Api.JobPostings;
+using TalentBridge.Post.Api.Outbox;
 
 // Local `dotnet run`: pull secrets from the repo-root .env (never from appsettings).
 DotEnv.Load(Directory.GetCurrentDirectory());
@@ -56,6 +57,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddPostDatabase();
 builder.Services.AddPostAuthentication();
 builder.Services.AddAuthRateLimiting();
+builder.Services.AddOutboxPublisher();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>(includeInternalTypes: true);
 
 builder.Services.ConfigureHttpJsonOptions(json =>
