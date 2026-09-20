@@ -6,6 +6,7 @@ using Serilog;
 using Serilog.Formatting.Compact;
 using TalentBridge.Search.Api.Configuration;
 using TalentBridge.Search.Api.Errors;
+using TalentBridge.Search.Api.Jobs;
 using TalentBridge.Search.Api.Projections;
 using TalentBridge.Search.Infrastructure;
 using TalentBridge.Search.Infrastructure.Persistence;
@@ -53,6 +54,19 @@ builder.Services.AddProblemDetails(options =>
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 
+// Read-side performance (CLAUDE.md §9): in-process output cache, tagged so a
+// projection can evict everything at once; compression for the JSON bodies.
+builder.Services.AddOutputCache(cache =>
+{
+    cache.AddPolicy(JobEndpoints.ListPolicy, policy => policy.Expire(JobEndpoints.ListTtl).SetVaryByQuery("*").Tag(JobEndpoints.CacheTag));
+    cache.AddPolicy(JobEndpoints.DetailPolicy, policy => policy.Expire(JobEndpoints.DetailTtl).SetVaryByRouteValue("slug").Tag(JobEndpoints.CacheTag));
+});
+builder.Services.AddResponseCompression(compression =>
+{
+    compression.EnableForHttps = true;
+    compression.MimeTypes = ["application/json", "application/problem+json"];
+});
+
 builder.Services.ConfigureHttpJsonOptions(json =>
     json.SerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull);
 
@@ -64,6 +78,8 @@ app.UseSerilogRequestLogging(options =>
     options.EnrichDiagnosticContext = (diagnostic, http) =>
         diagnostic.Set("TraceId", Activity.Current?.Id ?? http.TraceIdentifier));
 app.UseCors(CorsOptions.PolicyName);
+app.UseResponseCompression();
+app.UseOutputCache();
 
 if (app.Environment.IsDevelopment())
 {
@@ -73,6 +89,7 @@ if (app.Environment.IsDevelopment())
 app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
+app.MapJobEndpoints();
 app.MapProjectionEndpoints();
 
 var database = app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value;

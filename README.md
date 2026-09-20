@@ -9,7 +9,7 @@ The full design is in [`CLAUDE.md`](./CLAUDE.md). This README tracks what is act
 
 ## Status
 
-**Phase 5 — Outbox → projection.** A posting published, edited or closed in the Post API reaches `search.job_listings` within a couple of seconds: the outbox row written in the same transaction is picked up by a background publisher (2 s poll, `FOR UPDATE SKIP LOCKED`), pushed through a Polly pipeline to the Search API's shared-secret projection endpoint, and upserted by Dapper with a version guard. Failed pushes are retried, an outage trips a circuit breaker, exhausted rows are parked and reported on `/health/ready`. The Search API has no public read endpoints yet (Phase 6).
+**Phase 6 — Search API.** The public read side is complete: `GET /api/jobs` (keyword search through the tsvector, multi-select facets, salary range, recency, five sorts, paging), `GET /api/jobs/{slug}` (full posting + similar roles, ETag/304) and `GET /api/facets` (counts with each dimension's own filter excluded). Everything is Dapper against `search.job_listings`, output-cached (60 s lists / 300 s details, evicted by tag on projection), compressed, and sent with `Cache-Control: public`. `db/seed/search-listings.sql` loads ~1,000 varied rows; every query is index-backed and sub-millisecond. Both APIs are done; the Angular apps and Docker remain.
 
 ## Layout
 
@@ -151,6 +151,27 @@ processed_at = now()
 - **Scale-out safe.** `SKIP LOCKED` lets several Post API instances run the loop without double-claiming.
 - **Shared secret.** `Projection__SharedSecret` (≥ 32 chars, from `.env`) is sent as `X-Projection-Secret` and compared in constant time; the endpoint is excluded from OpenAPI and has no other auth. The Search API also applies `db/search-schema.sql` on startup in Development so a fresh database is ready without compose.
 - The Search API keeps its **own copy** of `JobProjectionMessage`; the services share a wire contract, not an assembly.
+
+## Search API (read side)
+
+| Endpoint | Result |
+|---|---|
+| `GET /api/jobs?q=&department=&location=&workArrangement=&employmentType=&seniority=&salaryMin=&salaryMax=&postedWithinDays=&sort=&page=&pageSize=` | `200 { items[], page, pageSize, total, totalPages }` — open, unexpired postings only |
+| `GET /api/jobs/{slug}` | `200 JobDetailResponse` (with `similar[]`, `ETag`), `304` on `If-None-Match`, `404` for an unknown slug. Closed/expired postings still return 200 with `isOpen:false` so the page can say so |
+| `GET /api/facets?…same filters…` | `200 { departments[], locations[], workArrangements[], employmentTypes[], seniorities[], total }` with counts |
+
+- `department`, `workArrangement`, `employmentType`, `seniority` accept repeated keys (multi-select). `sort` is `recent` (default) `relevance` `salaryDesc` `salaryAsc` `closingSoon`; anything else is a 400. `pageSize` caps at 50.
+- `salaryMin`/`salaryMax` filter by overlap with the posting's range; postings with a hidden salary never match a salary filter and return `null` numbers.
+- Caching: in-process output cache tagged `jobs` and evicted on every applied projection; `Cache-Control: public, max-age=60` (lists, facets) / `300` (detail); weak ETags on detail. Responses are Brotli/gzip compressed.
+- `docs/ARCHITECTURE.md` §6 explains each index, the one `ILIKE`, and the three cache layers.
+
+### Seed the board
+
+```sh
+docker exec -i talentbridge-pg psql -U talentbridge -d talentbridge < db/seed/search-listings.sql
+```
+
+Loads ~1,000 deterministic listings (plus a few closed and expired) into the read model only — they have no write-side counterpart and exist so the board has something to show and query plans can be judged at a realistic size.
 
 ## Run
 

@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Options;
 using TalentBridge.Search.Api.Configuration;
+using TalentBridge.Search.Api.Jobs;
 using TalentBridge.Search.Infrastructure.Projections;
 
 namespace TalentBridge.Search.Api.Projections;
@@ -28,6 +30,7 @@ public static class ProjectionEndpoints
     private static async Task<Results<Accepted<ProjectionReceipt>, ValidationProblem>> ApplyJob(
         JobProjectionMessage message,
         JobProjectionHandler handler,
+        IOutputCacheStore cache,
         ILogger<JobProjectionHandler> logger,
         CancellationToken ct)
     {
@@ -53,6 +56,12 @@ public static class ProjectionEndpoints
         }
 
         var applied = await handler.ApplyAsync(message, ct);
+        if (applied)
+        {
+            // Lists, facets and every detail page may now be stale.
+            await cache.EvictByTagAsync(JobEndpoints.CacheTag, ct);
+        }
+
         logger.LogInformation("Projection for {JobId} v{Version} {Outcome}", message.Id, message.Version, applied ? "applied" : "ignored (stale or duplicate)");
 
         // 202 either way: a stale or duplicate message is a successful no-op and

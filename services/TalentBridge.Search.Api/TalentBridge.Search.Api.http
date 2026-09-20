@@ -1,0 +1,66 @@
+### TalentBridge Search API — public reads (no auth) + internal projection
+@host = http://localhost:5002
+
+### Health
+GET {{host}}/health
+###
+GET {{host}}/health/ready
+
+### Default board: open, unexpired, newest first
+GET {{host}}/api/jobs
+
+### Keyword (tsvector) + relevance ranking
+GET {{host}}/api/jobs?q=warehouse+supervisor&sort=relevance
+
+### Multi-select facets, salary range, recency, paging (pageSize ≤ 50)
+GET {{host}}/api/jobs?department=Operations&department=Transport&workArrangement=Hybrid&salaryMin=35000&salaryMax=60000&postedWithinDays=30&sort=salaryDesc&page=1&pageSize=20
+
+### Unknown sort → 400 (never a silent default)
+GET {{host}}/api/jobs?sort=newest
+
+### Facet counts for the current query (each dimension counted with its own filter excluded)
+GET {{host}}/api/facets?department=Operations
+
+### Detail by slug → 200 with ETag; repeat with If-None-Match → 304
+# @name detail
+GET {{host}}/api/jobs/senior-warehouse-supervisor-leeds
+
+###
+GET {{host}}/api/jobs/senior-warehouse-supervisor-leeds
+If-None-Match: {{detail.response.headers.ETag}}
+
+### Unknown slug → 404
+GET {{host}}/api/jobs/does-not-exist
+
+### Internal: projection upsert (needs Projection__SharedSecret from .env)
+POST {{host}}/internal/projections/job
+X-Projection-Secret: {{$dotenv Projection__SharedSecret}}
+Content-Type: application/json
+
+{
+  "id": "11111111-1111-7111-8111-111111111111",
+  "version": 1,
+  "slug": "http-file-demo-listing",
+  "title": "HTTP File Demo Listing",
+  "department": "Operations",
+  "location": "Leeds, West Yorkshire",
+  "country": "United Kingdom",
+  "workArrangement": "Hybrid",
+  "employmentType": "FullTime",
+  "seniority": "Mid",
+  "salaryMin": 30000,
+  "salaryMax": 36000,
+  "salaryCurrency": "GBP",
+  "payPeriod": "Annual",
+  "salaryVisible": true,
+  "description": "A listing pushed straight from the .http file to demonstrate the projection endpoint and cache eviction.",
+  "responsibilities": null,
+  "requirements": null,
+  "skills": ["WMS"],
+  "organization": "Northline",
+  "applicationUrl": null,
+  "applicationEmail": "careers@northline.co",
+  "closingDate": "2026-12-31",
+  "publishedAt": "2026-09-20T12:00:00Z",
+  "isOpen": true
+}
