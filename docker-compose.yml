@@ -1,4 +1,117 @@
-# Filled in during Phase 9 (Docker). Kept as a valid, empty compose file so
-# `docker compose config` succeeds on a clean checkout.
+# TalentBridge — both APIs and a database.
+#
+#   docker compose up --build          local Postgres (default; COMPOSE_PROFILES=local in .env)
+#   docker compose --profile seed up seed   load ~1,000 demo listings into the read model
+#
+# Supabase mode: in .env set USE_SUPABASE=true, COMPOSE_PROFILES= (empty, so the
+# `postgres` service is skipped), Database__ConnectionString to the POOLED
+# string (port 6543) and Database__MigrationsConnectionString to the DIRECT
+# string (port 5432). Nothing else changes.
+#
+# Secrets (Jwt__SigningSecret, Projection__SharedSecret) come from .env only.
 name: talentbridge
-services: {}
+
+x-post-image: &post-image
+  build:
+    context: .
+    dockerfile: services/TalentBridge.Post.Api/Dockerfile
+  image: talentbridge/post-api:local
+
+services:
+  # --- database (local mode only) -----------------------------------------------
+  postgres:
+    image: postgres:17
+    profiles: ["local"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-talentbridge}
+      POSTGRES_USER: ${POSTGRES_USER:-talentbridge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-talentbridge}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # First start only: extension + both schemas, then the read model's DDL.
+      - ./db/init/01-schemas.sql:/docker-entrypoint-initdb.d/01-schemas.sql:ro
+      - ./db/search-schema.sql:/docker-entrypoint-initdb.d/02-search-schema.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-talentbridge} -d ${POSTGRES_DB:-talentbridge}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # --- one-shot: EF Core migrations for the post schema ------------------------
+  post-migrate:
+    <<: *post-image
+    entrypoint: ["/app/efbundle"]
+    command:
+      - "--connection"
+      - "${Database__MigrationsConnectionString:-${Database__ConnectionString:-Host=postgres;Port=5432;Database=talentbridge;Username=talentbridge;Password=talentbridge}}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    restart: "no"
+
+  # --- write side --------------------------------------------------------------
+  post-api:
+    <<: *post-image
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__ConnectionString: ${Database__ConnectionString:-Host=postgres;Port=5432;Database=talentbridge;Username=talentbridge;Password=talentbridge}
+      Database__ApplyMigrationsOnStartup: "false"
+      Projection__SearchApiBaseUrl: http://search-api:8080
+      Cors__AllowedOrigins__0: ${POST_WEB_ORIGIN:-http://localhost:4200}
+      Cors__AllowedOrigins__1: ${SEARCH_WEB_ORIGIN:-http://localhost:4201}
+    ports:
+      - "${POST_API_PORT:-5001}:8080"
+    depends_on:
+      post-migrate:
+        condition: service_completed_successfully
+      search-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- read side ---------------------------------------------------------------
+  search-api:
+    build:
+      context: .
+      dockerfile: services/TalentBridge.Search.Api/Dockerfile
+    image: talentbridge/search-api:local
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__ConnectionString: ${Database__ConnectionString:-Host=postgres;Port=5432;Database=talentbridge;Username=talentbridge;Password=talentbridge}
+      # Idempotent DDL; this is how the search schema reaches a database compose did not init (Supabase).
+      Database__ApplySchemaOnStartup: "true"
+      Cors__AllowedOrigins__0: ${POST_WEB_ORIGIN:-http://localhost:4200}
+      Cors__AllowedOrigins__1: ${SEARCH_WEB_ORIGIN:-http://localhost:4201}
+    ports:
+      - "${SEARCH_API_PORT:-5002}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+
+  # --- demo data (on demand): docker compose --profile seed up seed -------------
+  seed:
+    image: postgres:17
+    profiles: ["seed"]
+    environment:
+      SEED_CONNECTION: ${Database__MigrationsConnectionString:-${Database__ConnectionString:-Host=postgres;Port=5432;Database=talentbridge;Username=talentbridge;Password=talentbridge}}
+    volumes:
+      - ./db/seed/search-listings.sql:/seed.sql:ro
+      - ./db/seed/run.sh:/run.sh:ro
+    entrypoint: ["bash", "/run.sh"]
+    depends_on:
+      search-api:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  pgdata:

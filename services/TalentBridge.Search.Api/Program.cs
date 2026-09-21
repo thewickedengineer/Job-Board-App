@@ -92,10 +92,12 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 app.MapJobEndpoints();
 app.MapProjectionEndpoints();
 
+// The read model's DDL is idempotent, so this is safe in any environment; it is
+// how the search schema reaches a database compose did not initialise (Supabase).
 var database = app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-if (app.Environment.IsDevelopment() && database.ApplySchemaOnStartup)
+if (database.ApplySchemaOnStartup)
 {
-    app.Logger.LogInformation("Applying search schema (Development, Database:ApplySchemaOnStartup=true)");
+    app.Logger.LogInformation("Applying search schema (Database:ApplySchemaOnStartup=true)");
     await SearchSchema.ApplyAsync(app.Services.GetRequiredService<NpgsqlDataSource>());
 }
 

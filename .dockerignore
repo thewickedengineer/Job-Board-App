@@ -1,0 +1,19 @@
+# Only the .NET sources, db/ and the solution reach the API build contexts.
+.git
+.gitignore
+.env
+.env.*
+.playwright-mcp
+.angular
+apps
+docs
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/TestResults
+**/*.user
+**/.DS_Store
+services/**/*.http
+services/TalentBridge.Post.Tests
+services/TalentBridge.Search.Tests

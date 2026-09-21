@@ -9,7 +9,7 @@ public sealed class DatabaseOptions
     [Required(AllowEmptyStrings = false, ErrorMessage = "Database:ConnectionString is required.")]
     public string ConnectionString { get; init; } = string.Empty;
 
-    /// <summary>Run db/search-schema.sql (idempotent) when the host starts. Development only.</summary>
+    /// <summary>Run db/search-schema.sql (idempotent) when the host starts.</summary>
     public bool ApplySchemaOnStartup { get; init; }
 }
 
