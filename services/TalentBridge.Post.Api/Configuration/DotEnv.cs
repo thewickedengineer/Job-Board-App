@@ -32,7 +32,9 @@ public static class DotEnv
 
             var key = line[..eq].Trim();
             var value = line[(eq + 1)..].Trim().Trim('"');
-            if (Environment.GetEnvironmentVariable(key) is null)
+            // A blank value (as in a freshly copied .env.example) is "not set", so a
+            // later non-blank line for the same key still applies.
+            if (value.Length > 0 && Environment.GetEnvironmentVariable(key) is null)
             {
                 Environment.SetEnvironmentVariable(key, value);
             }

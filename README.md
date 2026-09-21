@@ -2,72 +2,67 @@
 
 A job board built as two deliberately different applications over one Postgres database:
 
-- **Post** (`apps/post-web` + `services/TalentBridge.Post.*`) — hiring managers sign up and create job postings. Low write volume; optimised for correctness and validation.
+- **Post** (`apps/post-web` + `services/TalentBridge.Post.*`) — hiring managers sign up and create job postings. Low write volume; optimised for correctness, validation quality and auditability.
 - **Search** (`apps/search-web` + `services/TalentBridge.Search.*`) — candidates browse postings anonymously. High read volume; optimised for latency and cacheability.
 
-The full design is in [`CLAUDE.md`](./CLAUDE.md). This README tracks what is actually built.
+The two sides share one database but not one design: the write side is EF Core over a normalised schema with a transactional outbox; the read side is Dapper over a denormalised projection with output caching and ETags. The decisions and the reasoning are in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md); the project constitution is [`CLAUDE.md`](./CLAUDE.md). This README tracks what is actually built and how to run it.
 
 ## Status
 
-**Phase 7 — post-web.** The hiring-manager portal is complete against wireframes 1.1–1.6: sign up, log in (generic 401, 429 lockout countdown), dashboard (URL-synced search/status/sort/paging, skeleton, empty vs. filtered-empty, error + retry), the job-posting form (typed reactive form, §6 client rules, group-level salary validator surfaced on `salaryMax`, server errors mapped mechanically onto controls with a focused error-summary banner), confirmation (echoes the API record), and edit (version conflicts → reload or overwrite, close with typed confirmation). Both APIs are done; search-web and Docker remain.
+| Phase | Component | State |
+|---|---|---|
+| 1–2 | Monorepo, `post` schema (EF Core migrations), `search` schema (SQL DDL) | ✅ |
+| 3 | Post API — self-issued JWT auth, rotating refresh cookies, rate limiting | ✅ |
+| 4 | Post API — job postings CRUD, §6 validation, RFC 9457 errors | ✅ |
+| 5 | Transactional outbox publisher (Polly) → Search projection endpoint (idempotent upsert) | ✅ |
+| 6 | Search API — Dapper queries, facets, output caching, ETag/304, compression | ✅ |
+| 7 | post-web — sign up / log in, dashboard, posting form, confirmation, edit | ✅ |
+| 8 | search-web — public board, filters in the URL, detail page | ⏳ scaffold only |
+| 9 | Docker — Dockerfiles, compose (local Postgres / Supabase modes), seed | ⏳ compose file is a placeholder |
+| 10 | Final test pass, docs | ⏳ |
 
-## Layout
+## Tech stack
 
-```
-apps/
-  post-web/                       Angular 22 — hiring manager portal (ng serve → :4200)
-  search-web/                     Angular 22 — public job board       (ng serve → :4201)
-services/
-  Directory.Build.props           shared .NET settings (net10.0, nullable, warnings-as-errors)
-  TalentBridge.Post.Api/          .NET 10 minimal API — write side    (:5001)
-  TalentBridge.Post.Domain/       Manager, RefreshToken, JobPosting, OutboxMessage
-  TalentBridge.Post.Infrastructure/  PostDbContext + entity configurations (EF Core, Npgsql)
-  TalentBridge.Post.Tests/        xUnit
-  TalentBridge.Search.Api/        .NET 10 minimal API — read side     (:5002)
-  TalentBridge.Search.Infrastructure/
-  TalentBridge.Search.Tests/      xUnit
-db/
-  migrations/                     EF Core migrations for the post schema (compiled into Post.Infrastructure)
-  search-schema.sql               hand-written DDL for search.job_listings + indexes (idempotent)
-  init/01-schemas.sql             compose init: citext extension + both schemas
-docs/
-  Wireframes.html
-TalentBridge.sln
-docker-compose.yml                empty until Phase 9
-.env.example                      every key the stack will need; copy to .env
-```
+| Concern | Choice | Version |
+|---|---|---|
+| Frontend | Angular — standalone components, signals, zoneless, lazy routes, strict templates | 22.1 |
+| Backend | ASP.NET Core minimal APIs, `TypedResults`, FluentValidation, Serilog | .NET 10 |
+| Database | PostgreSQL (local container now; Supabase-compatible) — two schemas | 17 |
+| Write-side data access | EF Core + Npgsql, snake_case naming, migrations in `db/migrations` | 10 |
+| Read-side data access | Dapper + `NpgsqlDataSource`, hand-written SQL, no DbContext | 2.1 |
+| Inter-service | Transactional outbox → HTTP push with `Microsoft.Extensions.Http.Resilience` (Polly v8) | — |
+| Auth | Self-issued HS256 JWT (15 min) + opaque refresh tokens hashed at rest (14 days) | — |
+| Tests | xUnit + Testcontainers (Postgres) on .NET; Vitest on Angular | — |
 
-## Prerequisites
+## Quick start (local development)
 
-- .NET SDK 10.0
-- Node.js 22+ and npm
-- Docker (for the local Postgres and for the integration tests, which use Testcontainers)
+Everything below runs on macOS/Linux/WSL. You need three long-running processes for the Post side (database, Post API, post-web) and one more (Search API) for the projection to have somewhere to go.
 
-## Secrets
+### 1. Prerequisites
 
-Copy `.env.example` to `.env` and fill in `Jwt__SigningSecret` and `Projection__SharedSecret` (`openssl rand -base64 48` for each). The Post API loads `.env` from the repo root on `dotnet run` in Development; docker-compose will inject the same file. Nothing secret lives in `appsettings*.json`, and the API refuses to start if the signing secret is missing or shorter than 32 characters.
+- **.NET SDK 10.0** — `dotnet --version` should print `10.x`.
+  On macOS with Homebrew: `brew install dotnet` and add `export DOTNET_ROOT="/opt/homebrew/opt/dotnet/libexec"` to your shell profile (the formula needs it; the `.pkg` installer does not).
+- **Node.js 22+** and npm — `node --version`.
+- **Docker** (Desktop or Engine) — used for the local Postgres and by the .NET integration tests (Testcontainers pulls `postgres:17` on first run).
 
-## Build and test
+### 2. Secrets
 
 ```sh
-# .NET — both APIs, all libraries, all tests
-dotnet build TalentBridge.sln
-dotnet test  TalentBridge.sln
-
-# Angular — each app is independent; run in apps/post-web and apps/search-web
-npm install
-npx ng build
-npx ng test
+cp .env.example .env
 ```
 
-## Database
+Fill in the two secrets — both must be at least 32 characters:
 
-One Postgres instance, two schemas, two owners:
+```sh
+echo "Jwt__SigningSecret=$(openssl rand -base64 48)"        >> .env
+echo "Projection__SharedSecret=$(openssl rand -base64 48)"  >> .env
+```
 
-- **`post`** — written by the Post API through EF Core. Tables: `managers`, `refresh_tokens`, `job_postings`, `outbox_messages`. Invariants live in the database as CHECK constraints (`salary_min < salary_max`, `openings > 0`, closed vocabularies for `status`, `employment_type`, `seniority`, `work_arrangement`, `pay_period`), not only in validation code. `email` is `citext` with a unique index.
-- **`search`** — written only by the Search API's projection endpoint, read with Dapper. One denormalised table, `job_listings`, with a stored generated `tsvector` (title weighted A, department/organization/location/skills B, description C, responsibilities/requirements D) and the indexes each query needs: GIN on `search_vector` and `skills`, B-tree on `(is_open, published_at desc)`, `department`, `work_arrangement`, `employment_type`, `closing_date`. `organization` is copied from the manager on purpose — the read side never joins to `post`.
+`.env` is gitignored. Both APIs read it from the repo root on `dotnet run` (Development only), so nothing secret ever lives in `appsettings*.json`. Each API refuses to start if its secret is missing or short. Keys use ASP.NET's `Section__Key` form so the same file will feed docker-compose via `env_file`.
 
-Until docker-compose lands (Phase 9), run a local Postgres like this:
+### 3. Database
+
+Start a local Postgres with both schemas initialised:
 
 ```sh
 docker run -d --name talentbridge-pg -p 5432:5432 \
@@ -77,10 +72,193 @@ docker run -d --name talentbridge-pg -p 5432:5432 \
   postgres:17
 ```
 
+That matches the connection string in both `appsettings.Development.json` files (`Host=localhost;Port=5432;Database=talentbridge;Username=talentbridge;Password=talentbridge`). The `post` schema's tables are created by the Post API on its first start (EF Core migrations, Development only); the `search` schema comes from the init script and is re-applied idempotently by the Search API on start.
+
+Later: `docker start talentbridge-pg` / `docker stop talentbridge-pg`.
+
+### 4. Restore and build
+
+```sh
+dotnet tool restore                 # pins dotnet-ef (dotnet-tools.json)
+dotnet build TalentBridge.sln       # warnings are errors; expect 0 of each
+(cd apps/post-web   && npm install)
+(cd apps/search-web && npm install)
+```
+
+### 5. Run the APIs (one terminal each)
+
+```sh
+dotnet run --project services/TalentBridge.Search.Api   # http://localhost:5002
+dotnet run --project services/TalentBridge.Post.Api     # http://localhost:5001
+```
+
+Start the Search API first if you can: the Post API's outbox publisher begins delivering two seconds after it starts, and a Search API that isn't up yet just means the first deliveries are retried (see *Outbox and projection* below — nothing is lost).
+
+Check both are ready:
+
+```sh
+curl localhost:5001/health/ready    # Healthy  (database reachable, outbox not backed up)
+curl localhost:5002/health/ready    # Healthy  (database reachable)
+```
+
+OpenAPI documents (Development only): `http://localhost:5001/openapi/v1.json`, `http://localhost:5002/openapi/v1.json`.
+
+### 6. Seed the public board (optional)
+
+```sh
+docker exec -i talentbridge-pg psql -U talentbridge -d talentbridge < db/seed/search-listings.sql
+```
+
+Loads ~1,000 deterministic listings (plus a few closed and expired) into the read model only. They have no write-side counterpart and no manager can edit them; they exist so `GET /api/jobs` has something to return and query plans can be judged at a realistic size.
+
+### 7. Run the hiring-manager portal
+
+```sh
+cd apps/post-web && npx ng serve    # http://localhost:4200
+```
+
+Open http://localhost:4200, click **Sign up**, and create an account. Signup rejects personal mailbox domains (gmail, outlook, yahoo, icloud…) — use any other domain, e.g. `you@yourcompany.example`. Passwords need 12+ characters with upper and lower case and a digit.
+
+Then: **+ Post a job** → fill the form → **Publish** → the confirmation screen shows the record exactly as the API stored it. Within about two seconds the outbox delivers it to the Search API:
+
+```sh
+curl "localhost:5002/api/jobs?q=<a word from your title>"
+curl  localhost:5002/api/jobs/<the slug from the confirmation screen>
+```
+
+`apps/search-web` (the public board UI) is scaffolded but not built yet; `npx ng serve --port 4201` in it shows a placeholder.
+
+### 8. Ports and processes at a glance
+
+| Process | Command | URL |
+|---|---|---|
+| PostgreSQL 17 | `docker start talentbridge-pg` | `localhost:5432` |
+| Search API | `dotnet run --project services/TalentBridge.Search.Api` | http://localhost:5002 |
+| Post API | `dotnet run --project services/TalentBridge.Post.Api` | http://localhost:5001 |
+| post-web | `cd apps/post-web && npx ng serve` | http://localhost:4200 |
+| search-web | `cd apps/search-web && npx ng serve --port 4201` | http://localhost:4201 |
+
+CORS on both APIs allows exactly `http://localhost:4200` and `http://localhost:4201` (`Cors:AllowedOrigins`), with credentials, so the refresh cookie works from the dev server.
+
+## Configuration reference
+
+Every setting is bound through `IOptions<T>` and validated at startup; a bad or missing value fails the process immediately with a message naming the key. Environment variables (including `.env`) override `appsettings*.json`; nested keys use `__`.
+
+| Key | Used by | Default (Development) | Notes |
+|---|---|---|---|
+| `Database__ConnectionString` | both | local container string | **required** |
+| `Database__ApplyMigrationsOnStartup` | Post | `true` | Development only; EF Core migrations |
+| `Database__ApplySchemaOnStartup` | Search | `true` | Development only; runs `db/search-schema.sql` |
+| `Jwt__SigningSecret` | Post | — | **required**, ≥ 32 chars, `.env` only |
+| `Jwt__Issuer` / `Jwt__Audience` | Post | `talentbridge-post-api` / `talentbridge-post-web` | |
+| `Jwt__AccessTokenMinutes` / `Jwt__RefreshTokenDays` | Post | `15` / `14` | |
+| `Projection__SharedSecret` | both | — | **required**, ≥ 32 chars, `.env` only; sent as `X-Projection-Secret` |
+| `Projection__SearchApiBaseUrl` | Post | `http://localhost:5002` | compose will set the in-network address |
+| `Outbox__Enabled` | Post | `true` | tests set `false` and drive batches by hand |
+| `Outbox__PollIntervalSeconds` / `Outbox__BatchSize` | Post | `2` / `20` | |
+| `Outbox__MaxAttempts` / `Outbox__BackedUpAfterMinutes` | Post | `10` / `2` | parked-row and degraded thresholds for `/health/ready` |
+| `AuthRateLimit__Login*` / `AuthRateLimit__Signup*` | Post | 5 per 5 min / 5 per 10 min | fixed window, per IP |
+| `Cors__AllowedOrigins__0…n` | both | the two dev servers | explicit origins, never `*` |
+
+Frontend configuration is `apps/post-web/src/environments/environment.ts`: `apiBaseUrl` (`http://localhost:5001`) and `jobBoardUrl` (`http://localhost:4201`, used by "View on job board" links). No secrets on the frontend.
+
+## Testing
+
+```sh
+dotnet test TalentBridge.sln                 # 96 tests; needs Docker (Testcontainers starts postgres:17)
+cd apps/post-web && npx ng test              # 9 Vitest specs, no network
+```
+
+What the suites cover:
+
+- **`CreateJobPostingValidatorTests`** (51 cases, in-memory, clock pinned with `FakeTimeProvider`) — the full §6 matrix including `salaryMin ≥ salaryMax`, closing date = today (UTC), every length and enum boundary.
+- **`AuthEndpointsTests`** — signup shape and cookie flags, exact 400 keys, case-insensitive duplicate email, identical 401 for wrong password vs. unknown email, `/api/me`, refresh rotation and replay detection, logout, 429 with `Retry-After`.
+- **`JobPostingEndpointsTests`** — 201 with the complete record and an outbox row in the same transaction, exact 400 keys (`salaryMax`, `closingDate`, …), ownership (404 for someone else's), paging/filters/sort rejection, version conflicts (409), draft → publish, close is irreversible.
+- **`OutboxPublisherTests`** — a posting insert that fails leaves no outbox row (same transaction); a failed push leaves the row unprocessed with `attempts+1` and `last_error`; success marks it processed and sends the payload; parked rows are skipped and reported `Unhealthy`.
+- **`JobProjectionHandlerTests` / `ProjectionEndpointTests`** — first apply inserts, the same message twice is a no-op, an older version is ignored, missing/wrong secret is 401, 202 with `applied` true/false.
+- **`JobEndpointsTests`** (Search) — closed/expired excluded, hidden salaries withheld and unfilterable, keyword hits on skills, combined filters, 400 keys, detail with ETag → 304, facets counted with their own dimension excluded, cache evicted on projection.
+- **post-web** — the posting form maps a `ValidationProblemDetails` payload onto the right controls and renders the error summary (the §13-required test); the date picker's keyboard contract.
+
+Tests never touch Supabase or the network beyond the local Docker daemon. The integration tests share one container per test assembly and use unique data per test, so they can run in any order.
+
+## Manual API walkthroughs
+
+`services/TalentBridge.Post.Api/TalentBridge.Post.Api.http` and `services/TalentBridge.Search.Api/TalentBridge.Search.Api.http` are REST-client files (VS Code REST Client, Rider, Visual Studio) that walk the full auth cycle, job-posting CRUD, the public reads including the ETag/304 round trip, and a manual projection push. Run them top to bottom against the running APIs.
+
+## Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| `dotnet: command not found` after `brew install dotnet` | Add `export DOTNET_ROOT="/opt/homebrew/opt/dotnet/libexec"` to your shell profile. |
+| API exits with `Jwt:SigningSecret is required` / `Projection:SharedSecret …` | `.env` is missing or the value is shorter than 32 characters. Run the API from the repo (it walks up from the working directory to find `.env`). |
+| `/health/ready` on the Post API is `Unhealthy` mentioning "parked" | An outbox row exhausted `Outbox:MaxAttempts` (usually a 4xx from the Search API). Inspect `post.outbox_messages.last_error`; `update post.outbox_messages set attempts = 0 where processed_at is null` requeues. |
+| `/health/ready` is `Degraded` mentioning "unprocessed" | The Search API was unreachable for a while; rows deliver once it is back. The circuit breaker deferred them without burning attempts. |
+| Login returns 429 / the form shows a countdown | Fixed-window rate limit: 5 login attempts per 5 minutes per IP. Wait for the countdown or raise `AuthRateLimit__LoginPermitLimit`. |
+| Sign-up says personal mailbox domains aren't accepted | By design (wireframe 1.1). Use a non-personal domain. |
+| Browser shows CORS errors | The dev server must be on port 4200 (post-web) or 4201 (search-web); other origins need adding to `Cors__AllowedOrigins__n`. |
+| `dotnet test` fails with `DockerUnavailableException` | Docker Desktop is not running or is paused. Unpause it from the whale menu. |
+| Port 5432 already in use | Another Postgres is running. Stop it, or map the container to a different port and change `Database__ConnectionString` in `.env`. |
+| `ng serve` says "Port 4200 is already in use" | A previous dev server is still running: `pkill -f "ng serve"`. |
+
+## Layout
+
+```
+apps/
+  post-web/                       Angular 22 — hiring manager portal (ng serve → :4200)
+  search-web/                     Angular 22 — public job board       (ng serve → :4201; scaffold)
+services/
+  Directory.Build.props           shared .NET settings (net10.0, nullable, warnings-as-errors)
+  TalentBridge.Post.Api/          .NET 10 minimal API — write side    (:5001)
+    Auth/                         endpoints, validators, TokenService, refresh cookie, rate limiting
+    JobPostings/                  endpoints, contracts, validators, slug generator
+    Outbox/                       OutboxPublisher (BackgroundService), ProjectionClient, health check
+    Validation/ Errors/ Configuration/
+  TalentBridge.Post.Domain/       Manager, RefreshToken, JobPosting, OutboxMessage, JobProjectionMessage
+  TalentBridge.Post.Infrastructure/  PostDbContext + entity configurations (EF Core, Npgsql)
+  TalentBridge.Post.Tests/        xUnit: validator matrix + Testcontainers integration tests
+  TalentBridge.Search.Api/        .NET 10 minimal API — read side     (:5002)
+    Jobs/                         /api/jobs, /api/jobs/{slug}, /api/facets, ETags, cache policies
+    Projections/                  /internal/projections/job behind the shared secret
+  TalentBridge.Search.Infrastructure/
+    Queries/                      JobFilter, JobListQuery, JobDetailQuery, FacetsQuery (Dapper)
+    Projections/                  JobProjectionHandler (upsert with version guard), wire contract
+    Persistence/                  SearchSchema (embedded DDL), DataSourceHealthCheck
+  TalentBridge.Search.Tests/      xUnit + Testcontainers
+db/
+  migrations/                     EF Core migrations for the post schema (compiled into Post.Infrastructure)
+  search-schema.sql               hand-written DDL for search.job_listings + indexes (idempotent)
+  init/01-schemas.sql             container init: citext extension + both schemas
+  seed/search-listings.sql        ~1,000-row demo/perf seed for the read model
+docs/
+  ARCHITECTURE.md                 the decisions and why
+  Wireframes.html                 the screens both apps are built to
+TalentBridge.sln
+dotnet-tools.json                 pins dotnet-ef
+docker-compose.yml                placeholder until Phase 9
+.env.example                      every key the stack needs; copy to .env
+```
+
+## Angular conventions
+
+Both apps: standalone components, `provideZonelessChangeDetection()` with no `zone.js` in the build, signals for state and `computed` for derived state, `httpResource`/`resource` for reads and typed services for commands, new control flow only (`@if`/`@for`/`@switch`/`@defer`), `ChangeDetectionStrategy.OnPush` everywhere, `input()`/`output()`/`model()` signal APIs, functional guards and interceptors with `provideHttpClient(withFetch(), withInterceptors([...]))`, lazy-loaded routes, `strict: true` + `strictTemplates: true`, SCSS with CSS custom-property design tokens (`src/styles/_tokens.scss`, duplicated per app — no shared library), and accessibility as part of done (labelled inputs, heading order, focus management, `aria-live` for async results, visible focus rings, keyboard-operable custom controls).
+
+---
+
+# Technical details
+
+## Database
+
+One Postgres instance, two schemas, two owners:
+
+- **`post`** — written by the Post API through EF Core. Tables: `managers`, `refresh_tokens`, `job_postings`, `outbox_messages`. Invariants live in the database as CHECK constraints (`salary_min < salary_max`, `openings > 0`, closed vocabularies for `status`, `employment_type`, `seniority`, `work_arrangement`, `pay_period`), not only in validation code. `email` is `citext` with a unique index.
+- **`search`** — written only by the Search API's projection endpoint, read with Dapper. One denormalised table, `job_listings`, with a stored generated `tsvector` (title weighted A, department/organization/location/skills B, description C, responsibilities/requirements D) and the indexes each query needs: GIN on `search_vector` and `skills`, B-tree on `(is_open, published_at desc)`, `department`, `work_arrangement`, `employment_type`, `closing_date`. `organization` is copied from the manager on purpose — the read side never joins to `post`.
+
+The local container is described in *Quick start → 3. Database*.
+
 Migrations (the `dotnet-ef` tool is pinned in `dotnet-tools.json`; run `dotnet tool restore` once):
 
 ```sh
-# apply to the database in POST_DB_CONNECTION_STRING (defaults to the container above)
+# apply to the database in POST_DB_CONNECTION_STRING (defaults to the local container)
 dotnet ef database update --project services/TalentBridge.Post.Infrastructure --startup-project services/TalentBridge.Post.Infrastructure
 
 # add a migration after changing the model
@@ -165,13 +343,7 @@ processed_at = now()
 - Caching: in-process output cache tagged `jobs` and evicted on every applied projection; `Cache-Control: public, max-age=60` (lists, facets) / `300` (detail); weak ETags on detail. Responses are Brotli/gzip compressed.
 - `docs/ARCHITECTURE.md` §6 explains each index, the one `ILIKE`, and the three cache layers.
 
-### Seed the board
-
-```sh
-docker exec -i talentbridge-pg psql -U talentbridge -d talentbridge < db/seed/search-listings.sql
-```
-
-Loads ~1,000 deterministic listings (plus a few closed and expired) into the read model only — they have no write-side counterpart and exist so the board has something to show and query plans can be judged at a realistic size.
+Seeding the board with ~1,000 demo rows is *Quick start → 6*.
 
 ## post-web (hiring manager portal)
 
@@ -189,17 +361,3 @@ Loads ~1,000 deterministic listings (plus a few closed and expired) into the rea
 - **Server errors** (`core/problem-details.ts`): `applyServerErrors(form, problem)` walks the `errors` keys, calls `control.setErrors({ server })` on the control of the same name, clears it on that control's next change, and returns unmatched keys so the banner still lists them. The banner is `role="alert"`, focused after the response, and each line focuses its input.
 - **Custom controls** (hand-built, `shared/`): keyboard-operable date picker (arrows, PageUp/PageDown, Home/End, Esc; past days disabled and skipped), chip input (Enter/comma commit, Backspace removes), segmented radio groups, focus-trapped `alertdialog`, toasts (5 s, paused on hover; errors persist).
 - **Tests** (`npx ng test`): the form maps a `ValidationProblemDetails` payload onto controls and renders the summary; the date picker's keyboard contract.
-
-## Run
-
-```sh
-dotnet run --project services/TalentBridge.Post.Api     # http://localhost:5001/health  and  /health/ready
-dotnet run --project services/TalentBridge.Search.Api   # http://localhost:5002/health  and  /health/ready
-
-cd apps/post-web   && npx ng serve                       # http://localhost:4200
-cd apps/search-web && npx ng serve                       # http://localhost:4201
-```
-
-## Angular conventions in place
-
-Both apps are generated with: standalone components, zoneless change detection (`provideZonelessChangeDetection()`, no `zone.js` dependency), SCSS, Vitest, `strict: true` and `strictTemplates: true`, and no SSR. `src/environments/environment.ts` holds only the API base URL.
