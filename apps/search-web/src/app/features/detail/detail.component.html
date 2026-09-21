@@ -1,0 +1,164 @@
+<p class="back"><a routerLink="/" (click)="goBack($event)">← {{ backText }}</a></p>
+<a class="skip-link" href="#apply-bar">Skip to Apply</a>
+
+@switch (state()) {
+  @case ('loading') {
+    <div class="detail-layout" aria-busy="true">
+      <div class="stack" aria-hidden="true">
+        <span class="skeleton" style="width: 55%; height: 28px"></span>
+        <span class="skeleton" style="width: 40%"></span>
+        <span class="skeleton" style="width: 30%"></span>
+        <div class="card stack"><span class="skeleton" style="width: 25%"></span><span class="skeleton"></span><span class="skeleton" style="width: 90%"></span><span class="skeleton" style="width: 70%"></span></div>
+        <div class="card stack"><span class="skeleton" style="width: 25%"></span><span class="skeleton" style="width: 80%"></span><span class="skeleton" style="width: 60%"></span></div>
+      </div>
+      <div class="card stack" aria-hidden="true"><span class="skeleton" style="width: 40%"></span><span class="skeleton"></span><span class="skeleton"></span></div>
+    </div>
+    <p class="visually-hidden" aria-live="polite">Loading job</p>
+  }
+  @case ('publishing') {
+    <section class="card state" role="status" aria-live="polite">
+      <h1>This listing is being published</h1>
+      <p class="muted">It was posted moments ago and is still propagating to the job board. This page checks again automatically — or refresh in a moment.</p>
+    </section>
+  }
+  @case ('notFound') {
+    <section class="card state">
+      <h1>We can't find that listing</h1>
+      <p class="muted">It may have been removed, or the link is wrong.</p>
+      <p><a routerLink="/" class="btn btn-primary">Browse all roles</a></p>
+    </section>
+  }
+  @case ('error') {
+    <section class="card state banner banner-error" role="alert">
+      <h1>We couldn't load this listing just now.</h1>
+      <p class="muted">Check your connection and try again.</p>
+      <p><button type="button" class="btn" (click)="retry()">Try again</button></p>
+    </section>
+  }
+  @case ('ready') {
+    @if (job(); as j) {
+      @if (!j.isOpen) {
+        <div class="banner banner-warn closed-banner" role="status" id="closed-reason">
+          @if (expired()) { This posting closed on {{ closingDateText() }} and is no longer accepting applications. }
+          @else { This posting has been closed by the employer and is no longer accepting applications. }
+          <a routerLink="/" [queryParams]="{ department: j.department }">Browse similar open roles →</a>
+        </div>
+      }
+
+      <header #header class="job-header">
+        <h1 tabindex="-1">{{ j.title }}</h1>
+        <p class="meta">
+          {{ j.department }} · {{ j.location }}
+          <span class="badge">{{ label(j.workArrangement) }}</span> · {{ label(j.employmentType) }} · {{ j.seniority }}
+        </p>
+        <p class="salary">{{ salary() }}</p>
+        <p class="row small muted">
+          <span>{{ j.organization }}</span> · <span>{{ posted() }}</span> ·
+          @if (j.isOpen) {
+            <span class="status" [class.status-warn]="closingSoon()">{{ closes() }}</span>
+          } @else {
+            <span class="status status-closed">Applications closed</span>
+          }
+        </p>
+        <p class="apply-inline">
+          @if (j.isOpen && applyHref(); as href) {
+            <a [href]="href" class="btn btn-primary apply" [attr.target]="applyExternal() ? '_blank' : null" [attr.rel]="applyExternal() ? 'noopener' : null">Apply now</a>
+          } @else {
+            <span class="btn btn-primary apply" aria-disabled="true" aria-describedby="closed-reason">Applications closed</span>
+          }
+        </p>
+      </header>
+
+      <div class="detail-layout">
+        <div class="content stack">
+          <section class="card" aria-labelledby="about-h">
+            <h2 id="about-h">About the role</h2>
+            <p class="prose">{{ j.description }}</p>
+          </section>
+
+          @if (responsibilities().length) {
+            <section class="card" aria-labelledby="resp-h">
+              <h2 id="resp-h">Responsibilities</h2>
+              <ul>@for (line of responsibilities(); track $index) { <li>{{ line }}</li> }</ul>
+            </section>
+          }
+
+          @if (requirements().length) {
+            <section class="card" aria-labelledby="req-h">
+              <h2 id="req-h">Requirements</h2>
+              <ul>@for (line of requirements(); track $index) { <li>{{ line }}</li> }</ul>
+            </section>
+          }
+
+          @if (j.skills.length) {
+            <section class="card" aria-labelledby="skills-h">
+              <h2 id="skills-h">Skills</h2>
+              <ul class="row skills" role="list">
+                @for (s of j.skills; track s) { <li class="chip chip-static">{{ s }}</li> }
+              </ul>
+            </section>
+          }
+        </div>
+
+        <aside class="sidebar stack">
+          <section class="card" aria-labelledby="glance-h">
+            <h2 id="glance-h">At a glance</h2>
+            <dl class="glance">
+              <dt>Department</dt><dd>{{ j.department }}</dd>
+              <dt>Arrangement</dt><dd>{{ label(j.workArrangement) }}</dd>
+              <dt>Type</dt><dd>{{ label(j.employmentType) }}</dd>
+              <dt>Seniority</dt><dd>{{ j.seniority }}</dd>
+              <dt>Location</dt><dd>{{ j.location === j.country ? j.country : j.location + ', ' + j.country }}</dd>
+              <dt>Closes</dt><dd>{{ closingDateText() }}</dd>
+              <dt>Organisation</dt><dd>{{ j.organization }}</dd>
+            </dl>
+          </section>
+
+          <section class="card" aria-labelledby="share-h">
+            <h2 id="share-h">Share</h2>
+            <div class="row">
+              <button type="button" class="btn btn-sm" (click)="copyLink()">Copy link</button>
+              <a class="btn btn-sm" [href]="mailShareHref()">Email</a>
+              <a class="btn btn-sm" [href]="linkedInShareHref()" target="_blank" rel="noopener">LinkedIn</a>
+            </div>
+            <p class="visually-hidden" aria-live="polite">@if (copied()) { Link copied }</p>
+            @if (copied()) { <p class="small muted copied">Link copied.</p> }
+          </section>
+
+          @defer (on viewport) {
+            @if (similar().length) {
+              <section class="card" aria-labelledby="similar-h">
+                <h2 id="similar-h">Similar roles</h2>
+                <ul class="similar" role="list">
+                  @for (s of similar(); track s.slug) {
+                    <li>
+                      <a [routerLink]="['/jobs', s.slug]">{{ s.title }}</a>
+                      <span class="small muted">{{ s.location }} · {{ label(s.workArrangement) }} · {{ s.salary }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+          } @placeholder {
+            <div class="card" aria-hidden="true"><span class="skeleton" style="width: 40%"></span></div>
+          }
+        </aside>
+      </div>
+
+      <!-- Floating apply bar: appears when the header scrolls away (desktop) and is always fixed on mobile. -->
+      <div id="apply-bar" class="apply-bar" [class.is-visible]="headerOffscreen()">
+        <div class="apply-bar-inner row-between">
+          <div class="apply-bar-text">
+            <strong>{{ j.title }}</strong>
+            <span class="small muted">{{ salary() }} · {{ j.isOpen ? closes() : 'Applications closed' }}</span>
+          </div>
+          @if (j.isOpen && applyHref(); as href) {
+            <a [href]="href" class="btn btn-primary" [attr.target]="applyExternal() ? '_blank' : null" [attr.rel]="applyExternal() ? 'noopener' : null">Apply now</a>
+          } @else {
+            <span class="btn btn-primary" aria-disabled="true">Applications closed</span>
+          }
+        </div>
+      </div>
+    }
+  }
+}

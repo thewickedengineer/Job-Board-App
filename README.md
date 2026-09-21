@@ -17,7 +17,7 @@ The two sides share one database but not one design: the write side is EF Core o
 | 5 | Transactional outbox publisher (Polly) → Search projection endpoint (idempotent upsert) | ✅ |
 | 6 | Search API — Dapper queries, facets, output caching, ETag/304, compression | ✅ |
 | 7 | post-web — sign up / log in, dashboard, posting form, confirmation, edit | ✅ |
-| 8 | search-web — public board, filters in the URL, detail page | ⏳ scaffold only |
+| 8 | search-web — public board, filters in the URL, detail page, mobile sheet | ✅ |
 | 9 | Docker — Dockerfiles, compose (local Postgres / Supabase modes), seed | ⏳ compose file is a placeholder |
 | 10 | Final test pass, docs | ⏳ |
 
@@ -126,7 +126,13 @@ curl "localhost:5002/api/jobs?q=<a word from your title>"
 curl  localhost:5002/api/jobs/<the slug from the confirmation screen>
 ```
 
-`apps/search-web` (the public board UI) is scaffolded but not built yet; `npx ng serve --port 4201` in it shows a placeholder.
+### 7b. Run the public board
+
+```sh
+cd apps/search-web && npx ng serve --port 4201    # http://localhost:4201
+```
+
+Every filter, the keyword and the page live in the URL (`/?q=warehouse&department=Operations&workArrangement=Hybrid&salaryMin=35000`), so a view is shareable and back/forward works. The posting you just published is at `/jobs/<slug>`; a slug that hasn't been projected yet shows "This listing is being published" and re-checks for a few seconds before declaring a real 404.
 
 ### 8. Ports and processes at a glance
 
@@ -205,7 +211,7 @@ Tests never touch Supabase or the network beyond the local Docker daemon. The in
 ```
 apps/
   post-web/                       Angular 22 — hiring manager portal (ng serve → :4200)
-  search-web/                     Angular 22 — public job board       (ng serve → :4201; scaffold)
+  search-web/                     Angular 22 — public job board       (ng serve → :4201)
 services/
   Directory.Build.props           shared .NET settings (net10.0, nullable, warnings-as-errors)
   TalentBridge.Post.Api/          .NET 10 minimal API — write side    (:5001)
@@ -356,6 +362,22 @@ Seeding the board with ~1,000 demo rows is *Quick start → 6*.
 | `/postings/new` | the posting form; Cancel / Save as draft / Publish in a sticky footer | 1.4, 1.4b |
 | `/postings/:id/confirmation` | the saved record exactly as the API returned it, with the propagation note | 1.5 |
 | `/postings/:id` | edit; save with the loaded `version` (409 → reload or overwrite); Close posting with a typed `CLOSE` confirmation | 1.6 |
+
+## search-web (public job board)
+
+`apps/search-web` — the high-traffic side. Same Angular conventions and the same `_tokens.scss` (copied, not shared); a wider 1240 px container, generous line-height, search in the header, a real footer and no auth chrome at all, so the shell renders identically for every visitor.
+
+| Route | Screen | Wireframe |
+|---|---|---|
+| `/` | results: filter rail (facet counts, location, seniority, salary sliders, posted-within), active-filter chips, sort, "Load more (N remaining)", skeleton after 200 ms, no-results with facet-derived suggestions, error/offline after two silent retries | 2.1, 2.2 |
+| `/jobs/:slug` | detail: sticky/fixed Apply, About / Responsibilities / Requirements / Skills, at-a-glance, share, similar roles (`@defer`), closed/expired variant with disabled Apply, "being published" grace period, 404 | 2.3 |
+| ≤ 720 px | filter bottom sheet (`role=dialog`, focus-trapped, "Show N jobs"), fixed Apply bar with 44 px targets, cards without the excerpt | 2.4 |
+
+- **URL is state.** `JobsService.toQueryParams` / `fromQueryParams` are a lossless pair (tested); the list and the facets are `httpResource`s keyed on the parsed filters. Keyword input in the header is debounced 300 ms; Enter submits immediately.
+- **Load more** appends pages through a `linkedSignal` that keeps accumulating while the filter key is unchanged and resets when it changes; focus moves to the first new card.
+- **No-results suggestions** come from the facet counts: each dimension is counted with its own filter excluded, so "Remove “Remote” (7)" is a relaxation known to return seven roles.
+- **Failure handling.** A failed list request retries twice (1 s, 3 s) before the `role=alert` panel with a focused "Try again"; the filters stay in the address bar. `resource.value()` throws while a resource is in its error state, so every read goes through a `hasValue()` guard.
+- **Client-derived copy** (`core/format.ts`, tested): salary strings from the numeric parts (never numbers for a hidden salary), "Posted 2 days ago", "Closes in 5 days" with the 7-day amber threshold, one-per-line text → lists.
 
 - **Session**: the access token lives in a signal in `AuthService`, never in storage; the refresh token is the `httpOnly` cookie the API sets. On load the app calls `/api/auth/refresh` (`provideAppInitializer`) so a reload on a protected page stays there. A functional interceptor attaches the bearer and, on a 401, refreshes once and retries; a functional guard redirects to `/login?returnUrl=…`.
 - **Server errors** (`core/problem-details.ts`): `applyServerErrors(form, problem)` walks the `errors` keys, calls `control.setErrors({ server })` on the control of the same name, clears it on that control's next change, and returns unmatched keys so the banner still lists them. The banner is `role="alert"`, focused after the response, and each line focuses its input.

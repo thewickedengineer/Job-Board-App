@@ -68,8 +68,11 @@ select
     work_arrangement,
     employment_type,
     seniority,
-    salary_min,
-    salary_min + 4000 + (r * 20000)::int / 500 * 500,
+    -- Hourly roles get hourly-scale numbers (roughly annual ÷ 2,000).
+    case when employment_type in ('PartTime','Temporary') and r < 0.5 then round(salary_min / 2000) else salary_min end,
+    case when employment_type in ('PartTime','Temporary') and r < 0.5
+         then round((salary_min + 4000 + (r * 20000)::int / 500 * 500) / 2000)
+         else salary_min + 4000 + (r * 20000)::int / 500 * 500 end,
     case when (select v from countries)[loc_idx] = 'Canada' then 'CAD' else 'GBP' end,
     case when employment_type in ('PartTime','Temporary') and r < 0.5 then 'Hourly' else 'Annual' end,
     salary_visible,

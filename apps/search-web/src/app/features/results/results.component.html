@@ -1,0 +1,109 @@
+<div class="results-layout">
+  <!-- Desktop rail -->
+  <aside class="rail-column">
+    <app-filter-rail [filters]="filters()" [facets]="facetsValue()" (changed)="apply($event)" />
+  </aside>
+
+  <section class="results-column" aria-labelledby="results-heading">
+    <div class="mobile-tools row-between">
+      <button #filtersBtn type="button" class="btn filters-btn" (click)="openSheet(filtersBtn)" [attr.aria-expanded]="sheetOpen()" aria-controls="filter-sheet">
+        ⚙ Filters @if (activeCount() > 0) { · {{ activeCount() }} }
+      </button>
+    </div>
+
+    @if (chips().length > 0) {
+      <div class="row chips" aria-label="Active filters">
+        @for (chip of chips(); track chip.key) {
+          <button type="button" class="chip" (click)="apply(chip.remove)" [attr.aria-label]="'Remove filter ' + chip.text">
+            {{ chip.text }} <span class="chip-x" aria-hidden="true">✕</span>
+          </button>
+        }
+        <button type="button" class="btn btn-ghost btn-sm" (click)="clearAll()">Clear all</button>
+      </div>
+    }
+
+    <div class="row-between results-head">
+      <h1 id="results-heading" class="results-count" aria-live="polite" aria-atomic="true">
+        @if (failed()) { Jobs }
+        @else if (page.isLoading() && items().length === 0) { Loading jobs… }
+        @else { {{ total() }} {{ total() === 1 ? 'job' : 'jobs' }}@if (filters().q) { <span class="muted"> matching “{{ filters().q }}”</span> } }
+      </h1>
+      <label class="row small sort">
+        <span class="muted">Sort:</span>
+        <select #sortSel class="select" (change)="setSort(sortSel.value)" aria-label="Sort results">
+          @for (s of sorts; track s) {
+            <option [value]="s" [selected]="s === filters().sort">{{ sortLabels[s] }}</option>
+          }
+        </select>
+      </label>
+    </div>
+    <p class="visually-hidden" aria-live="polite">{{ announcement() }}</p>
+
+    @if (failed()) {
+      <div #retryPanel class="banner banner-error" role="alert">
+        <p class="banner-title">{{ offline() ? 'Connection problem' : "We couldn't load jobs just now." }}</p>
+        <p class="small">{{ offline() ? 'Check your connection and try again. Nothing you typed has been lost.' : 'Your filters are saved in the address bar — try again in a moment.' }}</p>
+        <p><button type="button" class="btn" (click)="retry()">Try again</button></p>
+      </div>
+    } @else if (page.isLoading() && items().length === 0 && showSkeleton()) {
+      <div class="stack" aria-busy="true">
+        @for (i of skeletonCards; track i) {
+          <div class="card skeleton-card" aria-hidden="true">
+            <span class="skeleton w-60 tall"></span>
+            <span class="skeleton w-45"></span>
+            <span class="skeleton w-30"></span>
+            <span class="skeleton w-90"></span>
+            <span class="skeleton w-80"></span>
+          </div>
+        }
+      </div>
+    } @else if (page.hasValue() && items().length === 0) {
+      <section class="card empty" aria-labelledby="empty-title">
+        <h2 id="empty-title">No jobs match these filters</h2>
+        @if (suggestions().length > 0) {
+          <p class="muted">Try removing {{ suggestions()[0].values }} — {{ suggestions()[0].count }} {{ suggestions()[0].count === 1 ? 'role matches' : 'roles match' }} without it.</p>
+        } @else if (filters().salaryMin !== null || filters().salaryMax !== null) {
+          <p class="muted">Try widening the salary range or clearing a filter.</p>
+        } @else if (filters().q) {
+          <p class="muted">Try a broader keyword, or browse all roles.</p>
+        }
+        <div class="row">
+          <button type="button" class="btn btn-primary" (click)="clearAll()">Clear all filters</button>
+          @for (s of suggestions(); track s.values) {
+            <button type="button" class="btn" (click)="apply(s.apply)">Remove {{ s.values }} ({{ s.count }})</button>
+          }
+        </div>
+      </section>
+    } @else {
+      <div class="stack" [attr.aria-busy]="listBusy() ? 'true' : null">
+        @for (job of items(); track job.id) {
+          <app-job-card [job]="job" [resultsTotal]="total()" />
+        }
+      </div>
+      @if (hasMore()) {
+        <p class="load-more">
+          <button type="button" class="btn" (click)="loadMore()" [disabled]="loadingMore()" [attr.aria-busy]="loadingMore()">
+            Load more ({{ remaining() }} remaining)
+          </button>
+        </p>
+      }
+    }
+  </section>
+</div>
+
+<!-- Mobile filter sheet (wireframe 2.4-A) -->
+@if (sheetOpen()) {
+  <div class="sheet-backdrop" (click)="closeSheet()"></div>
+  <div #sheet id="filter-sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" (keydown)="onSheetKeydown($event)">
+    <div class="row-between sheet-head">
+      <h2 id="sheet-title" tabindex="-1">Filters</h2>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="closeSheet()" aria-label="Close filters">✕</button>
+    </div>
+    <div class="sheet-body">
+      <app-filter-rail [filters]="filters()" [facets]="facetsValue()" [showHeading]="false" (changed)="apply($event)" />
+    </div>
+    <div class="sheet-foot">
+      <button type="button" class="btn btn-primary" (click)="closeSheet()">Show {{ total() }} {{ total() === 1 ? 'job' : 'jobs' }}</button>
+    </div>
+  </div>
+}

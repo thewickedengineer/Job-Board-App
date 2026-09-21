@@ -75,9 +75,11 @@ export class DashboardComponent {
     params: this.api.listParams(this.query()),
   }));
 
-  readonly items = computed(() => this.postings.value()?.items ?? []);
-  readonly total = computed(() => this.postings.value()?.total ?? 0);
-  readonly totalPages = computed(() => this.postings.value()?.totalPages ?? 0);
+  // resource.value() throws while the resource is in its error state; guard every read.
+  private readonly pageValue = computed(() => (this.postings.hasValue() ? this.postings.value() : undefined));
+  readonly items = computed(() => this.pageValue()?.items ?? []);
+  readonly total = computed(() => this.pageValue()?.total ?? 0);
+  readonly totalPages = computed(() => this.pageValue()?.totalPages ?? 0);
   readonly publishedCount = computed(() => this.items().filter((p) => p.status === 'Published').length);
 
   /** Skeleton only after 200 ms, to avoid a flash on fast responses. */

@@ -109,6 +109,15 @@ Two Angular 22 applications that share tokens, primitives and conventions but no
 - **URL as state.** The dashboard's search, status, sort and page live only in the query string; the component derives its query from `ActivatedRoute.queryParamMap` and the list resource re-fetches when it changes. Shareable, refresh-safe, back-button-safe for free.
 - **Concurrency for editors.** `PUT` carries the `version` loaded with the record; a 409 is a banner with two honest choices — reload (drop my edits) or overwrite (re-fetch the version, resubmit my edits) — never a silent retry.
 
-### 8.2 search-web *(pending — phase 8)*
+### 8.2 search-web (built)
+
+- **The shell is static.** No session, no conditional chrome: header, search box and footer are the same bytes for every visitor, which is what makes the page cacheable at the edge if it is ever put behind one.
+- **Everything the candidate does is a URL.** Keyword, each facet value, location, salary bounds, recency, sort and page map 1:1 onto query params (`toQueryParams`/`fromQueryParams` are a tested lossless pair). The component owns no filter state of its own; it derives filters from `ActivatedRoute.queryParamMap` and both `httpResource`s re-fetch when the derived params change. Share, bookmark, back and forward are free, and "Try again" after an outage re-runs the exact query.
+- **Two resources, not one.** The list and the facets are separate requests with separate cache windows on the server, and the facet request omits sort and page so it stays cacheable across paging.
+- **Load more without losing the URL.** A `linkedSignal` accumulates pages while the filter key is unchanged and replaces them when it changes; `page=N` is written with `replaceUrl` so history does not fill with intermediate pages.
+- **Suggestions are facts, not guesses.** Because each facet dimension is counted with its own filter excluded, the sum of a dimension's counts is exactly what removing that filter would return; the empty state offers only relaxations with a positive count.
+- **Failure is quiet first, then honest.** Two silent retries with backoff, then a focused `role=alert` panel that distinguishes offline from server trouble. Reading `resource.value()` in the error state throws by design in Angular 20+, so every read is guarded by `hasValue()`.
+- **Eventual consistency on the deep link.** A slug that 404s is treated as "possibly not projected yet" for four checks two seconds apart before the page says the listing does not exist — the Post side's confirmation screen links here seconds after publishing.
+- **Mobile is the same components.** The filter rail renders once in the desktop column and again inside a focus-trapped bottom sheet; the Apply bar is fixed with 44 px targets and safe-area padding.
 
 ## 9. Deployment *(pending — phase 9)*
