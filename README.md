@@ -18,8 +18,8 @@ The two sides share one database but not one design: the write side is EF Core o
 | 6 | Search API — Dapper queries, facets, output caching, ETag/304, compression | ✅ |
 | 7 | post-web — sign up / log in, dashboard, posting form, confirmation, edit | ✅ |
 | 8 | search-web — public board, filters in the URL, detail page, mobile sheet | ✅ |
-| 9 | Docker — Dockerfiles, compose (local Postgres / Supabase modes), seed | ⏳ compose file is a placeholder |
-| 10 | Final test pass, docs | ⏳ |
+| 9 | Docker — multi-stage Dockerfiles, compose (local Postgres / Supabase modes), migration bundle, seed | ✅ written, **not yet run** (see *Verification status*) |
+| 10 | Docs — README, ARCHITECTURE.md, definition-of-done ledger | ✅ |
 
 ## Tech stack
 
@@ -34,9 +34,51 @@ The two sides share one database but not one design: the write side is EF Core o
 | Auth | Self-issued HS256 JWT (15 min) + opaque refresh tokens hashed at rest (14 days) | — |
 | Tests | xUnit + Testcontainers (Postgres) on .NET; Vitest on Angular | — |
 
-## Quick start (local development)
+## Quick start A — docker compose (APIs + database in containers)
 
-Everything below runs on macOS/Linux/WSL. You need three long-running processes for the Post side (database, Post API, post-web) and one more (Search API) for the projection to have somewhere to go.
+The fastest route on a clean machine: both APIs and Postgres in containers, the two Angular apps on `ng serve`.
+
+```sh
+cp .env.example .env
+echo "Jwt__SigningSecret=$(openssl rand -base64 48)"        >> .env
+echo "Projection__SharedSecret=$(openssl rand -base64 48)"  >> .env
+
+docker compose up --build            # postgres → post-migrate (EF bundle) → search-api → post-api
+docker compose --profile seed up seed   # optional: ~1,000 demo listings on the board
+
+curl localhost:5001/health/ready     # Healthy
+curl localhost:5002/health/ready     # Healthy
+
+(cd apps/post-web   && npm install && npx ng serve)               # http://localhost:4200
+(cd apps/search-web && npm install && npx ng serve --port 4201)   # http://localhost:4201
+```
+
+What compose runs (`docker-compose.yml`):
+
+| Service | Image | Role |
+|---|---|---|
+| `postgres` | `postgres:17` | profile `local`; named volume; init scripts create the extension, both schemas and the read-model DDL; `pg_isready` health check |
+| `post-migrate` | built from `services/TalentBridge.Post.Api/Dockerfile` | one-shot: runs the EF Core **migration bundle** (`/app/efbundle`) baked into the image against `Database__MigrationsConnectionString` (falls back to the runtime string); `post-api` waits for it to complete |
+| `post-api` | same image | Production environment, `:5001→8080`, non-root, `curl /health` health check, pushes projections to `http://search-api:8080` |
+| `search-api` | built from `services/TalentBridge.Search.Api/Dockerfile` | Production environment, `:5002→8080`, applies `search-schema.sql` idempotently on start |
+| `seed` | `postgres:17` | profile `seed`; applies `db/seed/search-listings.sql` via `db/seed/run.sh` |
+
+Both APIs read `.env` through `env_file` (optional — missing keys fail fast with a message naming them) and the compose file sets the in-network values (`Projection__SearchApiBaseUrl`, `ASPNETCORE_ENVIRONMENT`, ports) itself.
+
+### Database modes
+
+| | Local Postgres (default) | Supabase |
+|---|---|---|
+| `.env` | `USE_SUPABASE=false`, `COMPOSE_PROFILES=local`, `Database__ConnectionString=` **empty** | `USE_SUPABASE=true`, `COMPOSE_PROFILES=` **empty**, `Database__ConnectionString=<pooled, port 6543>`, `Database__MigrationsConnectionString=<direct, port 5432>` |
+| Database | the `postgres` service with a named volume | your Supabase project; the `postgres` service is skipped by the profile |
+| Schemas | init scripts on first start | `post-migrate` runs the EF bundle over the direct connection; `search-api` applies the read-model DDL on start |
+| Seed | `docker compose --profile seed up seed` | same |
+
+Supabase's pooled connection (PgBouncer, transaction mode) is fine for the APIs; migrations need the direct connection, which is why there are two strings. Never commit either.
+
+## Quick start B — everything on the host (development loop)
+
+For working on the APIs themselves. Same `.env`; three long-running processes for the Post side (database, Post API, post-web) and the Search API so the projection has somewhere to go.
 
 ### 1. Prerequisites
 
@@ -154,12 +196,16 @@ Every setting is bound through `IOptions<T>` and validated at startup; a bad or 
 |---|---|---|---|
 | `Database__ConnectionString` | both | local container string | **required** |
 | `Database__ApplyMigrationsOnStartup` | Post | `true` | Development only; EF Core migrations |
-| `Database__ApplySchemaOnStartup` | Search | `true` | Development only; runs `db/search-schema.sql` |
+| `Database__ApplySchemaOnStartup` | Search | `true` (also set by compose) | runs the idempotent `db/search-schema.sql` on start |
 | `Jwt__SigningSecret` | Post | — | **required**, ≥ 32 chars, `.env` only |
 | `Jwt__Issuer` / `Jwt__Audience` | Post | `talentbridge-post-api` / `talentbridge-post-web` | |
 | `Jwt__AccessTokenMinutes` / `Jwt__RefreshTokenDays` | Post | `15` / `14` | |
 | `Projection__SharedSecret` | both | — | **required**, ≥ 32 chars, `.env` only; sent as `X-Projection-Secret` |
-| `Projection__SearchApiBaseUrl` | Post | `http://localhost:5002` | compose will set the in-network address |
+| `Projection__SearchApiBaseUrl` | Post | `http://localhost:5002` | compose sets `http://search-api:8080` |
+| `Database__MigrationsConnectionString` | compose | — | Supabase direct string for `post-migrate` and `seed`; falls back to the runtime string |
+| `COMPOSE_PROFILES` / `USE_SUPABASE` | compose | `local` / `false` | empty / `true` selects Supabase mode |
+| `POST_API_PORT` / `SEARCH_API_PORT` / `POSTGRES_PORT` | compose | `5001` / `5002` / `5432` | host ports |
+| `POST_WEB_ORIGIN` / `SEARCH_WEB_ORIGIN` | compose | the two dev servers | mapped onto `Cors__AllowedOrigins__n` |
 | `Outbox__Enabled` | Post | `true` | tests set `false` and drive batches by hand |
 | `Outbox__PollIntervalSeconds` / `Outbox__BatchSize` | Post | `2` / `20` | |
 | `Outbox__MaxAttempts` / `Outbox__BackedUpAfterMinutes` | Post | `10` / `2` | parked-row and degraded thresholds for `/health/ready` |
@@ -186,6 +232,31 @@ What the suites cover:
 - **post-web** — the posting form maps a `ValidationProblemDetails` payload onto the right controls and renders the error summary (the §13-required test); the date picker's keyboard contract.
 
 Tests never touch Supabase or the network beyond the local Docker daemon. The integration tests share one container per test assembly and use unique data per test, so they can run in any order.
+
+## Verification status
+
+Everything through Phase 8 was exercised in this repository's history: the .NET suites (96 tests, Testcontainers) and the Angular suites (18 Vitest specs) were green at the Phase 8 commit, and both web apps were walked through in a real browser against the live APIs, including a posting published in post-web appearing on search-web seconds later.
+
+**Phase 9 (Docker) has been written but not built or run.** Before relying on it, run `docker compose up --build` on a clean checkout and check:
+
+1. `post-migrate` exits 0 — the `dotnet ef migrations bundle` step in the Post Dockerfile is the least-exercised piece; if it fails to build, the fallback is to set `ASPNETCORE_ENVIRONMENT=Development` and `Database__ApplyMigrationsOnStartup=true` on `post-api` and drop the `post-migrate` dependency.
+2. `docker compose ps` shows `post-api` and `search-api` healthy; `curl localhost:5001/health/ready` and `:5002/health/ready` return `Healthy`.
+3. With `COMPOSE_PROFILES=` empty and Supabase strings in `.env`, `docker compose config` lists no `postgres` service and `post-migrate` still resolves (it uses `depends_on … required: false`, Compose ≥ 2.20).
+
+## Definition of done (CLAUDE.md §14)
+
+| Item | State |
+|---|---|
+| `docker compose up` on a clean machine brings up both APIs and the database, both health endpoints green | written, unverified (above) |
+| `ng serve` in each app runs against the running APIs with no CORS errors | ✅ verified (Phases 7–8) |
+| A manager can sign up, log in, post a job, and see the server's saved record on the confirmation screen | ✅ verified in browser |
+| Submitting an invalid job shows server errors anchored to the correct fields | ✅ verified in browser + Vitest |
+| Within seconds, that job appears on the public board and its detail page loads by slug | ✅ verified end to end |
+| Filters and search on App 2 work and are reflected in the URL | ✅ verified in browser + Vitest round-trip |
+| Closed and expired postings are excluded from the board | ✅ verified (Search tests + browser) |
+| All tests pass via `dotnet test` and `npm test` | ✅ at the Phase 8 commit (96 + 18) |
+| No secrets in the repo; `.env.example` is complete | ✅ `.env` gitignored; every key documented |
+| README explains setup, the CQRS split, the outbox choice, and the read-side performance work | ✅ this file + `docs/ARCHITECTURE.md` |
 
 ## Manual API walkthroughs
 

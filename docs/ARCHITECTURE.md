@@ -120,4 +120,14 @@ Two Angular 22 applications that share tokens, primitives and conventions but no
 - **Eventual consistency on the deep link.** A slug that 404s is treated as "possibly not projected yet" for four checks two seconds apart before the page says the listing does not exist — the Post side's confirmation screen links here seconds after publishing.
 - **Mobile is the same components.** The filter rail renders once in the desktop column and again inside a focus-trapped bottom sheet; the Apply bar is fixed with 44 px targets and safe-area padding.
 
-## 9. Deployment *(pending — phase 9)*
+## 9. Deployment
+
+- **Two images, one shape.** Each API is a multi-stage build: the SDK image restores and publishes, the `aspnet` runtime image runs as the non-root `app` user on port 8080 with only `curl` added for the health check. No SDK, no source, no test projects in the final layer (`.dockerignore` keeps the build context to `services/` and `db/`).
+- **Migrations are a build artefact, not a startup side effect.** The Post image also contains a self-contained EF Core migration bundle (`dotnet ef migrations bundle`). Compose runs it as the one-shot `post-migrate` service and starts `post-api` only after it completes successfully. The API's own migrate-on-startup path stays Development-only, exactly as the constitution asks; production never migrates from inside a serving process.
+- **The read model initialises itself.** `search-schema.sql` is embedded in the Search assembly and applied on start when `Database:ApplySchemaOnStartup` is true; every statement is `IF NOT EXISTS`, so a container restart is a no-op and a fresh Supabase database gets its schema without a shell step.
+- **One switch for the database mode.** The local `postgres` service carries the compose profile `local`; `COMPOSE_PROFILES=local` (the `.env.example` default) starts it, an empty value skips it. The APIs declare their dependency on it with `required: false`, so the same compose file serves both modes. The connection string default in the compose file assumes the local container; a Supabase pooled string in `.env` overrides it for both APIs, and the direct string feeds the migration bundle and the seed.
+- **Health checks are the same ones the platform would use.** Container health probes `/health` (liveness). `/health/ready` on the Post API additionally reports the outbox: parked rows are `Unhealthy`, a backlog is `Degraded`, which is what an orchestrator or a dashboard should key on.
+- **Secrets never enter an image.** Both APIs fail fast without `Jwt__SigningSecret` / `Projection__SharedSecret`; compose passes `.env` through `env_file`, and the file is gitignored.
+- **The Angular apps are not containerised.** They are static bundles; `ng serve` in development and any static host in production, with `environment.prod.ts` pointing at the deployed API origins.
+
+*Status: written in phase 9 without being built or run; see the README's "Verification status" for the checks to perform first.*
